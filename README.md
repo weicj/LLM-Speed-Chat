@@ -1,5 +1,9 @@
 # LLM Speed Chat
 
+测速页面：https://weicj.github.io/LLM-Speed-Chat/ （无需下载部署）
+
+Online test platform: https://weicj.github.io/LLM-Speed-Chat/ (no download or deployment required)
+
 A small single-user chat UI for measuring interactive LLM serving speed against a local server or a hosted API.
 
 ![LLM Speed Chat product interface](docs/screenshots/product-chat.png)
@@ -22,10 +26,6 @@ python3 server.py
 ```
 
 Open `http://127.0.0.1:8080`. The same commands work for local or hosted OpenAI-compatible endpoints.
-
-## Online
-
-The GitHub Pages build is a browser-only test surface for a user's own endpoint. It sends their key and requests directly to that API, keeps the key only for the browser session, and requires the API to permit browser CORS requests.
 
 Common environment settings:
 
