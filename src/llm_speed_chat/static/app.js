@@ -113,6 +113,7 @@
       thinkingLabel: "Thinking",
       copy: "Copy",
       save: "Save",
+      preview: "Preview",
       retry: "Retry",
       copied: "Copied",
       copyFailed: "Copy failed",
@@ -164,6 +165,7 @@
       thinkingLabel: "思考",
       copy: "复制",
       save: "保存",
+      preview: "预览",
       retry: "重试",
       copied: "已复制",
       copyFailed: "复制失败",
@@ -771,7 +773,8 @@
 
       const languageClass = Array.from(code.classList).find((name) => name.startsWith("language-"));
       const language = languageClass ? languageClass.slice("language-".length).toLowerCase() : "";
-      if (language !== "html" && language !== "svg") continue;
+      const documentLanguage = language === "htm" ? "html" : language;
+      if (documentLanguage !== "html" && documentLanguage !== "svg") continue;
 
       const saveButton = document.createElement("button");
       saveButton.className = "codeSaveButton";
@@ -779,7 +782,7 @@
       saveButton.textContent = "\u21e9";
       saveButton.dataset.action = "save";
       refreshActionButton(saveButton);
-      saveButton.addEventListener("click", () => saveCodeBlock(code.textContent || "", language));
+      saveButton.addEventListener("click", () => saveCodeBlock(code.textContent || "", documentLanguage));
       block.appendChild(saveButton);
 
       const preview = document.createElement("button");
@@ -819,6 +822,25 @@
     if (!match) return null;
     const language = match[1].toLowerCase() === "svg" ? "svg" : "html";
     return {text: match[2], ...fileDetailsForLanguage(language)};
+  }
+
+  function rawDocumentMarkup(text) {
+    const markup = String(text || "").trim();
+    if (!markup) return null;
+    if (/^<svg\b/i.test(markup)) {
+      return {text: markup, ...fileDetailsForLanguage("svg")};
+    }
+    if (/^(?:<!doctype\s+html[^>]*>\s*)?<html\b/i.test(markup)) {
+      return {text: markup, ...fileDetailsForLanguage("html")};
+    }
+    if (/^<(?:style|main|section|article|div|canvas)\b/i.test(markup)) {
+      return {text: markup, ...fileDetailsForLanguage("html")};
+    }
+    return null;
+  }
+
+  function documentMarkup(text) {
+    return singleDocumentCodeBlock(text) || rawDocumentMarkup(text);
   }
 
   function messageFilename(message, extension = null) {
@@ -884,7 +906,7 @@
   function saveMessage(message) {
     const text = messageText(message);
     if (!text) return;
-    const documentCode = message.role === "assistant" ? singleDocumentCodeBlock(text) : null;
+    const documentCode = message.role === "assistant" ? documentMarkup(text) : null;
     downloadTextFile(
       documentCode ? documentCode.text : text,
       messageFilename(message, documentCode && documentCode.extension),
@@ -912,12 +934,30 @@
   function addMessageActions(message) {
     const actions = document.createElement("div");
     actions.className = "messageActions";
+    message.actions = actions;
     const copyButton = appendActionButton(actions, "\u29c9", "copy", () => copyMessage(message, copyButton));
     appendActionButton(actions, "\u21e9", "save", () => saveMessage(message));
     if (message.role === "user") {
       appendActionButton(actions, "\u21bb", "retry", () => retryMessage(message));
     }
+    updateAssistantPreviewAction(message);
     message.container.appendChild(actions);
+  }
+
+  function updateAssistantPreviewAction(message) {
+    if (message.role !== "assistant" || !message.actions) return;
+    const documentCode = rawDocumentMarkup(messageText(message));
+    if (!documentCode) {
+      if (message.previewButton) message.previewButton.hidden = true;
+      return;
+    }
+    if (!message.previewButton) {
+      message.previewButton = appendActionButton(message.actions, "\u25a3", "preview", () => {
+        const currentDocument = rawDocumentMarkup(messageText(message));
+        if (currentDocument) openPreview(currentDocument.text);
+      });
+    }
+    message.previewButton.hidden = false;
   }
 
   function addReasoningActions(reasoningMessage) {
@@ -1266,6 +1306,7 @@
         assistantText += contentPiece;
         assistantMessage.rawText = assistantText;
         renderAssistantMessage(assistantMessage.body, assistantText);
+        updateAssistantPreviewAction(assistantMessage);
       }
       scrollChatToBottom();
     };

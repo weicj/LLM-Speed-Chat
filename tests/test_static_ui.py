@@ -91,6 +91,8 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn("codeCopyButton", source)
         self.assertIn("codeSaveButton", source)
         self.assertIn("singleDocumentCodeBlock", source)
+        self.assertIn("rawDocumentMarkup", source)
+        self.assertIn("updateAssistantPreviewAction", source)
         self.assertIn("saveCodeBlock", source)
         self.assertIn("saveMessage", source)
         self.assertIn("retryMessage", source)

@@ -121,6 +121,14 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      if (lastUserText.includes("html-document-message")) {
+        streamChunks(res, [
+          {delayMs: 0, data: {choices: [{delta: {content: "<!doctype html><html><body><main id=\"online-preview\">Online preview</main></body></html>"}}]}},
+          {delayMs: 0, data: {usage: {prompt_tokens: 4, completion_tokens: 10}}},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("no-usage")) {
         streamChunks(res, [
           {delayMs: 100, data: {choices: [{delta: {content: "Response without "}}]}},

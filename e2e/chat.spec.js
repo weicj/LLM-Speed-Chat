@@ -104,6 +104,24 @@ test("GitHub Pages build connects directly to a user endpoint", async ({ browser
   await expect(page.locator(".msg.assistant").last()).toContainText("llama timings.");
   await expect(page.locator("#decodeSpeed")).toHaveText("25.0 tok/s");
   expect(configRequests).toEqual([]);
+
+  await expect(page.locator("#cancelBtn")).toBeDisabled();
+  await page.locator("#prompt").fill("html-document-message");
+  await page.locator("#sendBtn").click();
+  const htmlReply = page.locator(".msg.assistant").last();
+  await expect(htmlReply).toContainText("Online preview");
+  await expect(htmlReply.getByRole("button", {name: "Preview"})).toBeVisible();
+
+  await htmlReply.getByRole("button", {name: "Preview"}).click();
+  await expect(page.locator("#previewModal")).toBeVisible();
+  await expect(page.frameLocator("#previewFrame").locator("#online-preview")).toHaveText("Online preview");
+  await page.locator("#closePreviewBtn").click();
+  await expect(page.locator("#previewModal")).toBeHidden();
+
+  const downloadPromise = page.waitForEvent("download");
+  await htmlReply.getByRole("button", {name: "Save"}).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^llm-speed-chat-answer-.*\.html$/);
   await context.close();
 });
 
