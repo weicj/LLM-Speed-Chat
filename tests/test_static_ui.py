@@ -41,7 +41,8 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn('id="metricBackend"', source)
         self.assertIn('id="languageButton"', source)
         self.assertIn('id="languageMenu"', source)
-        self.assertIn('href="https://github.com/weicj/llm-speed-chat"', source)
+        self.assertIn('id="themeButton"', source)
+        self.assertIn('href="https://github.com/weicj/LLM-Speed-Chat"', source)
         self.assertNotIn('id="modelName"', source)
 
     def test_app_supports_streaming_chat_metrics_and_recovery(self) -> None:
@@ -75,6 +76,8 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn("timings.predicted_n", source)
         self.assertIn("recordDecodeTokens", source)
         self.assertIn("latestLlamaDecodeRate", source)
+        self.assertIn("themeStorageKey", source)
+        self.assertIn("applyTheme", source)
         self.assertIn('framework === "llamacpp" ? latestLlamaDecodeRate : null', source)
         self.assertIn("finish({completed})", source)
         self.assertNotIn("decodeTimingRate", source)
@@ -104,6 +107,8 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn(".toolbar", source)
         self.assertIn(".headerActions", source)
         self.assertIn(".repoLink", source)
+        self.assertIn(".themeButton", source)
+        self.assertIn('html[data-theme="dark"]', source)
         self.assertIn(".stats", source)
         self.assertIn(".chatShell", source)
         self.assertIn(".emptyState", source)

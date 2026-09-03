@@ -39,6 +39,7 @@
   const closePreviewBtn = el("closePreviewBtn");
   const languageButton = el("languageButton");
   const languageMenu = el("languageMenu");
+  const themeButton = el("themeButton");
 
   const storage = window.localStorage;
   const session = window.sessionStorage;
@@ -48,6 +49,7 @@
   const apiKeyStorageKey = "llm-speed-chat.upstream-api-key";
   const promptStorageKey = "llm-speed-chat.prompt-draft";
   const languageStorageKey = "llm-speed-chat.language";
+  const themeStorageKey = "llm-speed-chat.theme";
   const metricBackendStorageKey = "llm-speed-chat.metric-backend";
   const autoModelLoadDelayMs = 400;
 
@@ -56,6 +58,8 @@
       title: "LLM Speed Chat",
       intro: "Chat with any OpenAI-compatible endpoint and track speed.",
       language: "Switch language",
+      enableDarkMode: "Enable dark mode",
+      enableLightMode: "Enable light mode",
       english: "English",
       chinese: "Chinese",
       connectionSettings: "Connection Settings",
@@ -105,6 +109,8 @@
       title: "LLM Speed Chat",
       intro: "连接任意 OpenAI 兼容端点，实时查看速度。",
       language: "切换语言",
+      enableDarkMode: "开启深色模式",
+      enableLightMode: "开启浅色模式",
       english: "English",
       chinese: "中文",
       connectionSettings: "连接设置",
@@ -153,6 +159,7 @@
   };
 
   let language = storage.getItem(languageStorageKey) === "zh" ? "zh" : "en";
+  let theme = storage.getItem(themeStorageKey) === "dark" ? "dark" : "light";
 
   let history = [];
   let attachments = [];
@@ -272,7 +279,16 @@
     for (const option of languageMenu.querySelectorAll("[data-language]")) {
       option.classList.toggle("active", option.dataset.language === language);
     }
+    applyTheme();
     refreshFrameworkDetection();
+  }
+
+  function applyTheme() {
+    document.documentElement.dataset.theme = theme;
+    themeButton.dataset.theme = theme;
+    const action = theme === "dark" ? "enableLightMode" : "enableDarkMode";
+    themeButton.setAttribute("aria-label", t(action));
+    themeButton.title = t(action);
   }
 
   function setLanguage(nextLanguage) {
@@ -704,9 +720,11 @@
       const preview = document.createElement("button");
       preview.className = "previewBtn";
       preview.type = "button";
-      preview.textContent = "Open sandboxed preview";
+      preview.textContent = "\u25a3";
+      preview.setAttribute("aria-label", "Open sandboxed preview");
+      preview.title = "Open sandboxed preview";
       preview.addEventListener("click", () => openPreview(code.textContent || ""));
-      block.after(preview);
+      block.appendChild(preview);
     }
   }
 
@@ -1350,6 +1368,11 @@
 
   languageButton.addEventListener("click", () => {
     languageMenu.hidden = !languageMenu.hidden;
+  });
+  themeButton.addEventListener("click", () => {
+    theme = theme === "dark" ? "light" : "dark";
+    storage.setItem(themeStorageKey, theme);
+    applyTheme();
   });
   for (const option of languageMenu.querySelectorAll("[data-language]")) {
     option.addEventListener("click", () => setLanguage(option.dataset.language));

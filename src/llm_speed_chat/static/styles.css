@@ -86,6 +86,82 @@ body{
   outline-offset:2px;
 }
 
+.themeButton{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  padding:0;
+  cursor:pointer;
+}
+
+.themeButton:hover{
+  background:#eef2f6;
+}
+
+.themeButton:focus-visible{
+  outline:2px solid #475467;
+  outline-offset:2px;
+}
+
+.themeIcon{
+  position:relative;
+  display:block;
+  box-sizing:border-box;
+}
+
+.themeButton[data-theme="light"] .themeIcon{
+  width:17px;
+  height:17px;
+  border-radius:50%;
+  background:#475467;
+  overflow:hidden;
+}
+
+.themeButton[data-theme="light"] .themeIcon::after{
+  content:"";
+  position:absolute;
+  width:16px;
+  height:16px;
+  top:-4px;
+  left:5px;
+  border-radius:50%;
+  background:#f4f5f7;
+}
+
+.themeButton[data-theme="dark"] .themeIcon{
+  width:15px;
+  height:15px;
+  border:1.5px solid #cfd7e3;
+  border-radius:50%;
+}
+
+.themeButton[data-theme="dark"] .themeIcon::before,
+.themeButton[data-theme="dark"] .themeIcon::after{
+  content:"";
+  position:absolute;
+  background:#cfd7e3;
+}
+
+.themeButton[data-theme="dark"] .themeIcon::before{
+  width:2px;
+  height:4px;
+  top:-6px;
+  left:5px;
+  box-shadow:0 20px 0 #cfd7e3;
+}
+
+.themeButton[data-theme="dark"] .themeIcon::after{
+  width:4px;
+  height:2px;
+  top:5px;
+  left:-6px;
+  box-shadow:20px 0 0 #cfd7e3;
+}
+
 .globeIcon{
   position:relative;
   display:block;
@@ -376,7 +452,7 @@ body{
 .msg.assistant blockquote{margin:10px 0;padding:2px 0 2px 12px;border-left:3px solid #98a2b3;color:#475467}
 .msg.assistant hr{margin:14px 0;border:0;border-top:1px solid #cfd7e3}
 .msg.assistant :not(pre) > code{padding:2px 5px;border-radius:4px;background:#dce3ec;font:0.9em ui-monospace,SFMono-Regular,Menlo,monospace}
-.msg.assistant pre{position:relative;margin:10px 0;max-width:100%;overflow:auto;padding:10px 66px 10px 10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.msg.assistant pre{position:relative;margin:10px 0;max-width:100%;overflow:auto;padding:10px 94px 10px 10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
 .msg.assistant pre code{font:inherit}
 .codeCopyButton,.codeSaveButton{position:absolute;top:6px;width:24px;height:24px;padding:0;border:1px solid #c5d0df;border-radius:4px;background:#fff;color:#475467;font-size:15px;line-height:1;cursor:pointer}
 .codeCopyButton{right:6px}.codeSaveButton{right:34px}
@@ -514,7 +590,7 @@ body{
 .attachmentChip{display:flex;align-items:center;gap:8px;max-width:260px;padding:7px 9px;border:1px solid #d8dee8;border-radius:8px;background:#f8fafc;font-size:12px;overflow:hidden}
 .attachmentChip img{width:30px;height:30px;object-fit:cover;border-radius:4px}.attachmentChip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachmentChip button{border:0;background:transparent;font-size:16px;cursor:pointer}
 .fileBtn{display:inline-flex;align-items:center;justify-content:center}.fileBtn input{display:none}.fileBtn.disabled{opacity:.55;pointer-events:none}
-.previewBtn{margin:0 0 10px;padding:6px 9px;border:1px solid #b9c9e6;border-radius:6px;background:#edf3ff;color:#1d4ed8;font-weight:700;cursor:pointer}
+.previewBtn{position:absolute;top:6px;right:62px;width:24px;height:24px;padding:0;display:grid;place-items:center;border:1px solid #b9c9e6;border-radius:4px;background:#edf3ff;color:#1d4ed8;font-size:15px;line-height:1;cursor:pointer}
 .previewModal[hidden]{display:none!important}.previewModal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.55)}.previewDialog{width:min(1050px,100%);height:min(760px,100%);display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden}.previewDialogHead{display:flex;justify-content:space-between;gap:16px;padding:14px;border-bottom:1px solid #d8dee8}.previewDialogTitle{font-weight:750}.previewDialogMeta{margin-top:4px;color:#667085;font-size:12px}.previewFrame{width:100%;height:100%;border:0}
 
 .composerField{
@@ -569,6 +645,199 @@ body{
   background:#98a2b3;
   color:#fff;
   cursor:not-allowed;
+}
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+}
+
+html[data-theme="dark"] body{
+  background:#101318;
+  color:#f3f4f6;
+}
+
+html[data-theme="dark"] .sub,
+html[data-theme="dark"] .repoLink,
+html[data-theme="dark"] .fieldLabel,
+html[data-theme="dark"] .status,
+html[data-theme="dark"] .label,
+html[data-theme="dark"] .hint,
+html[data-theme="dark"] .emptyState,
+html[data-theme="dark"] .msg.assistant blockquote,
+html[data-theme="dark"] .reasoningMessage,
+html[data-theme="dark"] .previewDialogMeta{
+  color:#aeb8c7;
+}
+
+html[data-theme="dark"] .repoLink:hover,
+html[data-theme="dark"] .languageMenu button:hover,
+html[data-theme="dark"] .languageMenu button.active,
+html[data-theme="dark"] .messageAction:hover,
+html[data-theme="dark"] .codeCopyButton:hover,
+html[data-theme="dark"] .codeSaveButton:hover{
+  color:#f8fafc;
+}
+
+html[data-theme="dark"] .languageButton:hover,
+html[data-theme="dark"] .themeButton:hover,
+html[data-theme="dark"] .languageMenu button:hover,
+html[data-theme="dark"] .languageMenu button.active{
+  background:#242c37;
+}
+
+html[data-theme="dark"] .languageButton:focus-visible,
+html[data-theme="dark"] .themeButton:focus-visible,
+html[data-theme="dark"] .repoLink:focus-visible{
+  outline-color:#cbd5e1;
+}
+
+html[data-theme="dark"] .globeIcon,
+html[data-theme="dark"] .globeIcon::before,
+html[data-theme="dark"] .globeIcon::after{
+  border-color:#cbd5e1;
+}
+
+html[data-theme="dark"] .languageMenu,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .stat,
+html[data-theme="dark"] .previewDialog{
+  border-color:#303a48;
+  background:#171c23;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+
+html[data-theme="dark"] .languageMenu button,
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .prompt,
+html[data-theme="dark"] .toggleControl,
+html[data-theme="dark"] .msg.assistant,
+html[data-theme="dark"] .msg.assistant h1,
+html[data-theme="dark"] .msg.assistant h2,
+html[data-theme="dark"] .msg.assistant h3,
+html[data-theme="dark"] .msg.assistant h4,
+html[data-theme="dark"] .msg.assistant pre,
+html[data-theme="dark"] .messageAction,
+html[data-theme="dark"] .codeCopyButton,
+html[data-theme="dark"] .codeSaveButton,
+html[data-theme="dark"] .attachmentChip,
+html[data-theme="dark"] .previewDialogTitle{
+  color:#f3f4f6;
+}
+
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .prompt,
+html[data-theme="dark"] .msg.assistant pre,
+html[data-theme="dark"] .codeCopyButton,
+html[data-theme="dark"] .codeSaveButton{
+  border-color:#3a4655;
+  background:#11161d;
+}
+
+html[data-theme="dark"] .field input::placeholder,
+html[data-theme="dark"] .prompt::placeholder{
+  color:#8793a5;
+}
+
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus,
+html[data-theme="dark"] .prompt:focus{
+  border-color:#cbd5e1;
+  box-shadow:0 0 0 3px rgba(203,213,225,.14);
+}
+
+html[data-theme="dark"] .advancedGrid,
+html[data-theme="dark"] .reasoningLabel,
+html[data-theme="dark"] .previewDialogHead{
+  border-color:#303a48;
+}
+
+html[data-theme="dark"] .msg.user{
+  background:#1d4ed8;
+}
+
+html[data-theme="dark"] .msg.assistant{
+  background:#222a35;
+}
+
+html[data-theme="dark"] .msg.assistant.err{
+  border-color:#8d3a4c;
+  background:#381d27;
+  color:#fecdd3;
+}
+
+html[data-theme="dark"] .msg.assistant.cancelled{
+  border-color:#9a6a31;
+  background:#382916;
+  color:#fed7aa;
+}
+
+html[data-theme="dark"] .msg.assistant :not(pre) > code{
+  background:#303a48;
+}
+
+html[data-theme="dark"] .msg.assistant blockquote{
+  border-color:#64748b;
+}
+
+html[data-theme="dark"] .msg.assistant hr,
+html[data-theme="dark"] .msg.assistant th,
+html[data-theme="dark"] .msg.assistant td{
+  border-color:#3a4655;
+}
+
+html[data-theme="dark"] .msg.assistant th,
+html[data-theme="dark"] .reasoningLabel,
+html[data-theme="dark"] .attachmentChip{
+  background:#27303c;
+}
+
+html[data-theme="dark"] .msg.assistant a{
+  color:#93c5fd;
+}
+
+html[data-theme="dark"] .reasoningMessage{
+  border-color:#3a4655;
+  background:#1b222c;
+}
+
+html[data-theme="dark"] .reasoningLabel{
+  color:#d5dce7;
+}
+
+html[data-theme="dark"] .messageAction:hover,
+html[data-theme="dark"] .codeCopyButton:hover,
+html[data-theme="dark"] .codeSaveButton:hover{
+  border-color:#64748b;
+  background:#283241;
+}
+
+html[data-theme="dark"] .msg.user .messageAction:hover{
+  background:rgba(255,255,255,.12);
+}
+
+html[data-theme="dark"] .previewBtn{
+  border-color:#3b5f99;
+  background:#192b47;
+  color:#bfdbfe;
+}
+
+html[data-theme="dark"] .btn{
+  background:#2563eb;
+}
+
+html[data-theme="dark"] .btn.secondary{
+  background:#303a48;
+  color:#f3f4f6;
+}
+
+html[data-theme="dark"] .btn.danger{
+  background:#b42318;
+}
+
+html[data-theme="dark"] .btn:disabled{
+  background:#475569;
 }
 
 @media (max-width:900px){
@@ -628,5 +897,9 @@ body{
 
   .assistantTurn{
     max-width:90%;
+  }
+
+  .msg.assistant pre{
+    padding-top:38px;
   }
 }

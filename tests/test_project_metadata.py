@@ -29,9 +29,19 @@ PLAYWRIGHT_CONFIG = ROOT / "playwright.config.js"
 E2E_SPEC = ROOT / "e2e" / "chat.spec.js"
 MOCK_UPSTREAM = ROOT / "e2e" / "mock-upstream.js"
 PACKAGE_LOCK = ROOT / "package-lock.json"
+PRODUCT_SCREENSHOT = ROOT / "docs" / "screenshots" / "product-chat.png"
 
 
 class ProjectMetadataTest(unittest.TestCase):
+    def test_readme_includes_the_product_interface_screenshot(self) -> None:
+        readme = README.read_text(encoding="utf-8")
+
+        self.assertTrue(PRODUCT_SCREENSHOT.is_file())
+        self.assertIn(
+            "![LLM Speed Chat product interface](docs/screenshots/product-chat.png)",
+            readme,
+        )
+
     def test_ci_runs_multi_version_tests_and_wheel_smoke(self) -> None:
         source = CI_YML.read_text(encoding="utf-8")
 

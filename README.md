@@ -2,6 +2,8 @@
 
 A small single-user OpenAI-compatible chat UI for measuring interactive LLM serving speed against local or remote endpoints.
 
+![LLM Speed Chat product interface](docs/screenshots/product-chat.png)
+
 The point of this project is not to provide a production service. The point is to give one person a fast local harness that feels like a real user talking to an agent, while surfacing the metrics that matter during that interaction:
 
 - End-to-end prompt throughput

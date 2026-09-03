@@ -242,10 +242,17 @@ test("keeps connection controls level and generation settings expanded", async (
 test("switches the interface between English and Chinese without exposing the model path in the header", async ({ page }) => {
   await expect(page.locator("#modelName")).toHaveCount(0);
   await expect(page.locator("#title")).toHaveText("LLM Speed Chat");
-  await expect(page.getByRole("link", {name: "github.com/weicj/llm-speed-chat"})).toHaveAttribute(
+  await expect(page.getByRole("link", {name: "github.com/weicj/LLM-Speed-Chat"})).toHaveAttribute(
     "href",
-    "https://github.com/weicj/llm-speed-chat"
+    "https://github.com/weicj/LLM-Speed-Chat"
   );
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("#themeButton")).toHaveAccessibleName("Enable dark mode");
+  await page.locator("#themeButton").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("#themeButton")).toHaveAccessibleName("Enable light mode");
+  await page.locator("#themeButton").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   await page.locator("#languageButton").click();
   await page.locator("#languageMenu [data-language='zh']").click();
@@ -256,6 +263,7 @@ test("switches the interface between English and Chinese without exposing the mo
   await page.locator("#languageButton").click();
   await page.locator("#languageMenu [data-language='en']").click();
   await expect(page.locator("#sendBtn")).toHaveText("Send");
+  await expect(page.locator("#themeButton")).toHaveAccessibleName("Enable dark mode");
 });
 
 test("uses an unlimited thinking budget when enabled with zero", async ({ page }) => {
