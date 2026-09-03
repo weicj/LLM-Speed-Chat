@@ -22,7 +22,9 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Benchmark",
 ]
-dependencies = []
+dependencies = [
+  "tomli>=2.0.1; python_version < '3.11'",
+]
 
 [project.scripts]
 llm-speed-chat = "llm_speed_chat.__main__:main"
