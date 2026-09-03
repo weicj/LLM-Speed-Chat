@@ -9,5 +9,6 @@ playwright-report/
 test-results/
 runs/
 dist/
+site/
 build/
 *.egg-info/

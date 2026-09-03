@@ -2,6 +2,11 @@ const http = require("node:http");
 
 const host = process.env.MOCK_UPSTREAM_HOST || "127.0.0.1";
 const port = Number(process.env.MOCK_UPSTREAM_PORT || "18000");
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
 
 const server = http.createServer((req, res) => {
   const chunks = [];
@@ -9,9 +14,16 @@ const server = http.createServer((req, res) => {
   req.on("end", () => {
     const bodyText = Buffer.concat(chunks).toString("utf8");
 
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, corsHeaders);
+      res.end();
+      return;
+    }
+
     if (req.method === "GET" && req.url === "/v1/models") {
       if ((req.headers.authorization || "") === "Bearer rate-limit-models") {
         res.writeHead(429, {
+          ...corsHeaders,
           "Content-Type": "application/json",
           "Retry-After": "11",
         });
@@ -22,7 +34,7 @@ const server = http.createServer((req, res) => {
       const authorization = req.headers.authorization || "";
       const isLocalVllm = authorization === "Bearer local-vllm";
       const isLocalLlama = authorization === "Bearer local-llama";
-      res.writeHead(200, {"Content-Type": "application/json"});
+      res.writeHead(200, {...corsHeaders, "Content-Type": "application/json"});
       res.end(JSON.stringify({
         data: isLocalVllm
           ? [{id: "local-vllm-model", owned_by: "vllm"}]
@@ -38,7 +50,7 @@ const server = http.createServer((req, res) => {
       try {
         payload = bodyText ? JSON.parse(bodyText) : {};
       } catch {
-        res.writeHead(400, {"Content-Type": "application/json"});
+        res.writeHead(400, {...corsHeaders, "Content-Type": "application/json"});
         res.end(JSON.stringify({error: "invalid json"}));
         return;
       }
@@ -51,6 +63,7 @@ const server = http.createServer((req, res) => {
 
       if (lastUserText.includes("upstream-rate-limit")) {
         res.writeHead(429, {
+          ...corsHeaders,
           "Content-Type": "application/json",
           "Retry-After": "7",
         });
@@ -233,7 +246,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    res.writeHead(404, {"Content-Type": "application/json"});
+    res.writeHead(404, {...corsHeaders, "Content-Type": "application/json"});
     res.end(JSON.stringify({error: "not found"}));
   });
 });
@@ -256,6 +269,7 @@ function extractMessageText(message) {
 
 function streamChunks(res, chunks) {
   res.writeHead(200, {
+    ...corsHeaders,
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",

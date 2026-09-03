@@ -1,5 +1,6 @@
 const { test, expect } = require("@playwright/test");
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
+const net = require("node:net");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -9,9 +10,19 @@ const UPSTREAM_PORT = 18000;
 
 let appProcess;
 let smallLimitAppProcess;
+let staticSiteProcess;
+let staticSitePort;
 let upstreamProcess;
 
 test.beforeAll(async () => {
+  const pagesBuild = spawnSync("python3", ["scripts/build-pages.py", "--output", "site"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  if (pagesBuild.status !== 0) {
+    throw new Error(`Pages build failed: ${pagesBuild.stderr || pagesBuild.stdout}`);
+  }
+
   upstreamProcess = await startProcess("node", ["e2e/mock-upstream.js"], {
     MOCK_UPSTREAM_HOST: "127.0.0.1",
     MOCK_UPSTREAM_PORT: String(UPSTREAM_PORT),
@@ -31,11 +42,15 @@ test.beforeAll(async () => {
     MODEL: "",
     MAX_REQUEST_BYTES: "20000",
   }, `http://127.0.0.1:${SMALL_LIMIT_APP_PORT}`);
+
+  staticSitePort = await findFreePort();
+  staticSiteProcess = await startProcess("python3", ["-u", "-m", "http.server", String(staticSitePort), "--bind", "127.0.0.1", "--directory", "site"], {}, "Serving HTTP");
 });
 
 test.afterAll(async () => {
   await stopProcess(appProcess);
   await stopProcess(smallLimitAppProcess);
+  await stopProcess(staticSiteProcess);
   await stopProcess(upstreamProcess);
 });
 
@@ -56,6 +71,40 @@ test("loads models and streams a chat response with live metrics", async ({ page
   await expect(page.locator("#decodeSpeed")).toContainText("tok/s");
   await expect(page.locator("#tokens")).toHaveText("5");
   await expect(page.locator("#wallTime")).toContainText("s");
+});
+
+test("GitHub Pages build connects directly to a user endpoint", async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const configRequests = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/config")) configRequests.push(request.url());
+  });
+
+  await page.goto(`http://127.0.0.1:${staticSitePort}/`);
+  await expect(page.locator("#apiStatus")).toContainText("Enter an API URL");
+
+  await page.locator("#apiBaseUrl").fill(`http://127.0.0.1:${UPSTREAM_PORT}/v1/chat/completions`);
+  await page.locator("#apiKey").fill("local-llama");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-llama-model");
+
+  const requestPromise = page.waitForRequest(
+    (request) => request.url() === `http://127.0.0.1:${UPSTREAM_PORT}/v1/chat/completions`
+  );
+  await page.locator("#prompt").fill("llama-live-metrics");
+  await page.locator("#sendBtn").click();
+
+  const request = await requestPromise;
+  const payload = JSON.parse(request.postData() || "{}");
+  expect(request.headers()["authorization"]).toBe("Bearer local-llama");
+  expect(payload.upstream_base_url).toBeUndefined();
+  expect(payload.upstream_api_key).toBeUndefined();
+  expect(payload.timings_per_token).toBe(true);
+  await expect(page.locator(".msg.assistant").last()).toContainText("llama timings.");
+  await expect(page.locator("#decodeSpeed")).toHaveText("25.0 tok/s");
+  expect(configRequests).toEqual([]);
+  await context.close();
 });
 
 test("marks token metrics as provisional when an API does not return usage", async ({ page }) => {
@@ -486,6 +535,20 @@ async function startProcess(command, args, envOverrides, expected) {
   });
   await waitForOutput(child, expected);
   return child;
+}
+
+async function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      server.close((error) => {
+        if (error) reject(error);
+        else resolve(address.port);
+      });
+    });
+  });
 }
 
 async function waitForOutput(child, expected) {

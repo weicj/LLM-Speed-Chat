@@ -1,11 +1,23 @@
 (async () => {
-  const configResponse = await fetch("/config");
-  if (!configResponse.ok) {
-    document.body.textContent = "Failed to load config.";
-    return;
-  }
+  const isDirectTransport = document.documentElement.dataset.transport === "direct";
+  const STATIC_CONFIG = Object.freeze({
+    upstream_base_url: "",
+    model: "",
+    defaultMaxTokens: 512,
+    defaultTemperature: 0.2,
+    defaultThinkingBudget: 0,
+    maxRequestBytes: 64 * 1024 * 1024,
+  });
 
-  const CONFIG = await configResponse.json();
+  let CONFIG = STATIC_CONFIG;
+  if (!isDirectTransport) {
+    const configResponse = await fetch("/config");
+    if (!configResponse.ok) {
+      document.body.textContent = "Failed to load config.";
+      return;
+    }
+    CONFIG = await configResponse.json();
+  }
 
   const el = (id) => document.getElementById(id);
   const titleEl = el("title");
@@ -197,7 +209,59 @@
   }
 
   function currentUpstreamBaseUrl() {
-    return apiBaseUrlEl.value.trim().replace(/\/+$/, "");
+    const rawValue = apiBaseUrlEl.value.trim().replace(/\/+$/, "");
+    return isDirectTransport ? normalizeDirectUpstreamBaseUrl(rawValue) : rawValue;
+  }
+
+  function normalizeDirectUpstreamBaseUrl(value) {
+    if (!value) return "";
+
+    let normalized = value;
+    if (!normalized.includes("://")) normalized = `http://${normalized}`;
+
+    try {
+      const url = new URL(normalized);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return value;
+
+      let path = url.pathname.replace(/\/+$/, "");
+      for (const suffix of ["/v1/chat/completions", "/chat/completions", "/v1/models", "/models", "/v1"]) {
+        if (path === suffix) {
+          path = "";
+          break;
+        }
+        if (path.endsWith(suffix)) {
+          path = path.slice(0, -suffix.length).replace(/\/+$/, "");
+          break;
+        }
+      }
+      url.pathname = path || "/";
+      url.search = "";
+      url.hash = "";
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      return value;
+    }
+  }
+
+  function directEndpoint(path) {
+    return `${currentUpstreamBaseUrl()}${path}`;
+  }
+
+  function requestHeaders({json = false} = {}) {
+    const headers = {};
+    if (json) headers["Content-Type"] = "application/json";
+    if (isDirectTransport) {
+      const apiKey = apiKeyEl.value.trim();
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    }
+    return headers;
+  }
+
+  function requestFailureMessage(error) {
+    const message = error && error.message ? error.message : "request failed";
+    return isDirectTransport
+      ? `${message}. Confirm that this API allows browser CORS requests.`
+      : message;
   }
 
   function currentModel() {
@@ -337,6 +401,7 @@
   }
 
   function buildConnectionPayload() {
+    if (isDirectTransport) return {};
     const payload = {
       upstream_base_url: currentUpstreamBaseUrl(),
     };
@@ -1086,12 +1151,17 @@
     renderControlState();
 
     try {
-      const response = await fetch("/models", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(buildConnectionPayload()),
-        signal: modelLoadController.signal,
-      });
+      const response = isDirectTransport
+        ? await fetch(directEndpoint("/v1/models"), {
+          headers: requestHeaders(),
+          signal: modelLoadController.signal,
+        })
+        : await fetch("/models", {
+          method: "POST",
+          headers: requestHeaders({json: true}),
+          body: JSON.stringify(buildConnectionPayload()),
+          signal: modelLoadController.signal,
+        });
 
       if (version !== modelLoadVersion) return;
 
@@ -1128,7 +1198,7 @@
     } catch (err) {
       if (err && err.name === "AbortError") return;
       if (version !== modelLoadVersion) return;
-      setApiStatus(`Failed to load models: ${err && err.message ? err.message : "request failed"}`, true);
+      setApiStatus(`Failed to load models: ${requestFailureMessage(err)}`, true);
     } finally {
       if (version === modelLoadVersion) {
         modelLoadController = null;
@@ -1266,9 +1336,9 @@
     renderControlState();
 
     try {
-      const response = await fetch("/chat", {
+      const response = await fetch(isDirectTransport ? directEndpoint("/v1/chat/completions") : "/chat", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: requestHeaders({json: true}),
         body: JSON.stringify(payload),
         signal: controller.signal,
       });

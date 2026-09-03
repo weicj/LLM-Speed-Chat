@@ -23,6 +23,10 @@ python3 server.py
 
 Open `http://127.0.0.1:8080`. The same commands work for local or hosted OpenAI-compatible endpoints.
 
+## Online
+
+The GitHub Pages build is a browser-only test surface for a user's own endpoint. It sends their key and requests directly to that API, keeps the key only for the browser session, and requires the API to permit browser CORS requests.
+
 Common environment settings:
 
 ```bash
