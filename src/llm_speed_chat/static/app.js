@@ -261,7 +261,7 @@
       node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
       node.title = t(node.dataset.i18nAriaLabel);
     }
-    for (const button of document.querySelectorAll(".messageAction, .codeCopyButton")) {
+    for (const button of document.querySelectorAll(".messageAction, .codeCopyButton, .codeSaveButton")) {
       refreshActionButton(button);
     }
     for (const label of document.querySelectorAll(".reasoningLabel")) {
@@ -692,6 +692,15 @@
       const language = languageClass ? languageClass.slice("language-".length).toLowerCase() : "";
       if (language !== "html" && language !== "svg") continue;
 
+      const saveButton = document.createElement("button");
+      saveButton.className = "codeSaveButton";
+      saveButton.type = "button";
+      saveButton.textContent = "\u21e9";
+      saveButton.dataset.action = "save";
+      refreshActionButton(saveButton);
+      saveButton.addEventListener("click", () => saveCodeBlock(code.textContent || "", language));
+      block.appendChild(saveButton);
+
       const preview = document.createElement("button");
       preview.className = "previewBtn";
       preview.type = "button";
@@ -712,11 +721,39 @@
     return String(message.rawText || "");
   }
 
-  function messageFilename(message) {
+  function filenameTimestamp() {
+    return new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z");
+  }
+
+  function fileDetailsForLanguage(language) {
+    return language === "svg"
+      ? {extension: "svg", type: "image/svg+xml;charset=utf-8"}
+      : {extension: "html", type: "text/html;charset=utf-8"};
+  }
+
+  function singleDocumentCodeBlock(text) {
+    const match = String(text).trim().match(/^```(html|htm|svg)\s*\r?\n([\s\S]*?)\r?\n?```$/i);
+    if (!match) return null;
+    const language = match[1].toLowerCase() === "svg" ? "svg" : "html";
+    return {text: match[2], ...fileDetailsForLanguage(language)};
+  }
+
+  function messageFilename(message, extension = null) {
     const role = message.role === "assistant" ? "answer" : message.role;
-    const extension = message.role === "assistant" ? "md" : "txt";
-    const timestamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z");
-    return `llm-speed-chat-${role}-${timestamp}.${extension}`;
+    const defaultExtension = message.role === "assistant" ? "md" : "txt";
+    return `llm-speed-chat-${role}-${filenameTimestamp()}.${extension || defaultExtension}`;
+  }
+
+  function downloadTextFile(text, filename, type) {
+    const blob = new Blob([text], {type});
+    const url = URL.createObjectURL(blob);
+    const download = document.createElement("a");
+    download.href = url;
+    download.download = filename;
+    document.body.appendChild(download);
+    download.click();
+    download.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   function setActionState(button, label, state) {
@@ -764,15 +801,17 @@
   function saveMessage(message) {
     const text = messageText(message);
     if (!text) return;
-    const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const download = document.createElement("a");
-    download.href = url;
-    download.download = messageFilename(message);
-    document.body.appendChild(download);
-    download.click();
-    download.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    const documentCode = message.role === "assistant" ? singleDocumentCodeBlock(text) : null;
+    downloadTextFile(
+      documentCode ? documentCode.text : text,
+      messageFilename(message, documentCode && documentCode.extension),
+      documentCode ? documentCode.type : "text/plain;charset=utf-8"
+    );
+  }
+
+  function saveCodeBlock(text, language) {
+    const details = fileDetailsForLanguage(language);
+    downloadTextFile(text, `llm-speed-chat-code-${filenameTimestamp()}.${details.extension}`, details.type);
   }
 
   function appendActionButton(actions, icon, action, onClick) {

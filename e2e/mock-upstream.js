@@ -100,6 +100,14 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      if (lastUserText.includes("html-only-message")) {
+        streamChunks(res, [
+          {delayMs: 0, data: {choices: [{delta: {content: "```html\n<!doctype html><title>Saved HTML</title>\n```"}}]}},
+          {delayMs: 0, data: {usage: {prompt_tokens: 4, completion_tokens: 8}}},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("no-usage")) {
         streamChunks(res, [
           {delayMs: 100, data: {choices: [{delta: {content: "Response without "}}]}},

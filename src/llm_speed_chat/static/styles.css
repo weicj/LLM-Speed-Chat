@@ -376,10 +376,11 @@ body{
 .msg.assistant blockquote{margin:10px 0;padding:2px 0 2px 12px;border-left:3px solid #98a2b3;color:#475467}
 .msg.assistant hr{margin:14px 0;border:0;border-top:1px solid #cfd7e3}
 .msg.assistant :not(pre) > code{padding:2px 5px;border-radius:4px;background:#dce3ec;font:0.9em ui-monospace,SFMono-Regular,Menlo,monospace}
-.msg.assistant pre{position:relative;margin:10px 0;max-width:100%;overflow:auto;padding:10px 38px 10px 10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.msg.assistant pre{position:relative;margin:10px 0;max-width:100%;overflow:auto;padding:10px 66px 10px 10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
 .msg.assistant pre code{font:inherit}
-.codeCopyButton{position:absolute;top:6px;right:6px;width:24px;height:24px;padding:0;border:1px solid #c5d0df;border-radius:4px;background:#fff;color:#475467;font-size:15px;line-height:1;cursor:pointer}
-.codeCopyButton:hover{border-color:#98a2b3;background:#f8fafc;color:#111827}.codeCopyButton[data-state="copied"]{border-color:#12b76a;color:#067647}.codeCopyButton[data-state="error"]{border-color:#f04438;color:#b42318}
+.codeCopyButton,.codeSaveButton{position:absolute;top:6px;width:24px;height:24px;padding:0;border:1px solid #c5d0df;border-radius:4px;background:#fff;color:#475467;font-size:15px;line-height:1;cursor:pointer}
+.codeCopyButton{right:6px}.codeSaveButton{right:34px}
+.codeCopyButton:hover,.codeSaveButton:hover{border-color:#98a2b3;background:#f8fafc;color:#111827}.codeCopyButton[data-state="copied"]{border-color:#12b76a;color:#067647}.codeCopyButton[data-state="error"]{border-color:#f04438;color:#b42318}
 .msg.assistant table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:10px 0;font-size:13px}
 .msg.assistant th,.msg.assistant td{padding:7px 9px;border:1px solid #d8dee8;text-align:left;vertical-align:top}
 .msg.assistant th{background:#f8fafc;font-weight:700}

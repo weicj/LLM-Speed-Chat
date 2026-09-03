@@ -299,6 +299,7 @@ test("renders assistant output as sanitized Markdown", async ({ page }) => {
   await expect(reply.locator("li code")).toHaveText("inline code");
   await expect(reply.locator("pre code.language-html")).toHaveText('<div class="card">Copy this HTML</div>');
   await expect(reply.locator(".codeCopyButton")).toHaveAccessibleName("Copy");
+  await expect(reply.locator(".codeSaveButton")).toHaveAccessibleName("Save");
   await expect(reply.locator(".previewBtn")).toBeVisible();
   await expect(reply.locator("blockquote")).toHaveText("A quote");
   await expect(reply.locator("a")).toHaveAttribute("rel", "noopener noreferrer");
@@ -315,6 +316,23 @@ test("renders assistant output as sanitized Markdown", async ({ page }) => {
   });
   await reply.locator(".codeCopyButton").click();
   await expect.poll(() => page.evaluate(() => window.copiedCode)).toBe('<div class="card">Copy this HTML</div>\n');
+
+  const htmlDownloadPromise = page.waitForEvent("download");
+  await reply.locator(".codeSaveButton").click();
+  const htmlDownload = await htmlDownloadPromise;
+  expect(htmlDownload.suggestedFilename()).toMatch(/^llm-speed-chat-code-.*\.html$/);
+});
+
+test("saves a standalone HTML assistant reply as an HTML document", async ({ page }) => {
+  await page.locator("#prompt").fill("html-only-message");
+  await page.locator("#sendBtn").click();
+
+  const reply = page.locator(".msg.assistant").last();
+  await expect(reply.locator("pre code.language-html")).toContainText("Saved HTML");
+  const downloadPromise = page.waitForEvent("download");
+  await reply.locator(".messageAction[data-action='save']").click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^llm-speed-chat-answer-.*\.html$/);
 });
 
 test("api url changes auto-discover models without manual refresh", async ({ page }) => {
