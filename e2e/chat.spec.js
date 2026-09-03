@@ -230,6 +230,7 @@ test("gives every message copy and save actions, with retry on user messages", a
   await page.locator("#prompt").fill("hello browser");
   await page.locator("#sendBtn").click();
   await expect(page.locator(".msg.assistant").last()).toContainText("Hello from the browser test.");
+  await expect(page.locator("#cancelBtn")).toBeDisabled();
 
   const userMessage = page.locator(".msg.user").last();
   const assistantMessage = page.locator(".msg.assistant").last();
