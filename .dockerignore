@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.git
+.github
+.venv
+__pycache__/
+build/
+dist/
+node_modules/
+playwright-report/
+test-results/
+runs/
+src/llm_speed_chat.egg-info/
+tests/
+*.pyc
+*.pyo

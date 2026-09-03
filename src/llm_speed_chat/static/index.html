@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LLM Speed Chat</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="hero">
+        <div>
+          <h1 class="title" id="title" data-i18n="title">LLM Speed Chat</h1>
+          <p class="sub" id="intro" data-i18n="intro">Chat with any OpenAI-compatible endpoint and track speed.</p>
+        </div>
+        <div class="headerActions">
+          <a class="repoLink" href="https://github.com/weicj/llm-speed-chat" target="_blank" rel="noopener noreferrer">github.com/weicj/llm-speed-chat</a>
+          <div class="languageControl">
+            <button class="languageButton" id="languageButton" type="button" data-i18n-aria-label="language" title="Switch language">
+              <span class="globeIcon" aria-hidden="true"></span>
+            </button>
+            <div class="languageMenu" id="languageMenu" hidden>
+              <button type="button" data-language="en" data-i18n="english">English</button>
+              <button type="button" data-language="zh" data-i18n="chinese">Chinese</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel toolbar" data-i18n-aria-label="connectionSettings" aria-label="Connection Settings">
+        <p class="status" id="apiStatus" aria-live="polite"></p>
+        <label class="field fieldWide" for="apiBaseUrl">
+          <span class="fieldLabel" data-i18n="apiUrl">API URL</span>
+          <input id="apiBaseUrl" type="text" data-i18n-placeholder="apiUrlPlaceholder" placeholder="http://127.0.0.1:8000 or http://127.0.0.1:8000/v1">
+        </label>
+        <label class="field" for="apiKey">
+          <span class="fieldLabel" data-i18n="apiKey">API Key</span>
+          <input id="apiKey" type="password" data-i18n-placeholder="optional" placeholder="Optional">
+        </label>
+        <label class="field" for="model">
+          <span class="fieldLabel" data-i18n="model">Model</span>
+          <input id="model" list="modelOptions" data-i18n-placeholder="modelPlaceholder" placeholder="Auto-detected or manual">
+          <datalist id="modelOptions"></datalist>
+        </label>
+        <button class="btn secondary detectModels" id="connectBtn" type="button" data-i18n="detectModels">Detect Models</button>
+        <div class="advancedGrid" data-i18n-aria-label="advancedSettings" aria-label="Advanced Generation Settings">
+          <label class="field" for="maxTokens">
+            <span class="fieldLabel" data-i18n="maxTokens">Max Tokens</span>
+            <input id="maxTokens" type="number" min="1" step="1">
+          </label>
+          <label class="field" for="temp">
+            <span class="fieldLabel" data-i18n="temperature">Temperature</span>
+            <input id="temp" type="number" min="0" step="0.1">
+          </label>
+          <label class="field thinkingToggle" for="thinkingEnabled">
+            <span class="fieldLabel" data-i18n="thinking">Thinking</span>
+            <span class="toggleControl">
+              <input id="thinkingEnabled" type="checkbox">
+              <span data-i18n="enableReasoning">Enable reasoning</span>
+            </span>
+          </label>
+          <label class="field" for="thinkingBudget">
+            <span class="fieldLabel" data-i18n="thinkingBudget">Thinking Budget</span>
+            <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited thinking">
+          </label>
+          <label class="field" for="metricBackend">
+            <span class="fieldLabel" data-i18n="framework">Framework</span>
+            <select id="metricBackend" data-i18n-title="frameworkTitle" title="Detected from the model list. Select a framework to override.">
+              <option value="auto" data-i18n="frameworkAuto">Auto-detected</option>
+              <option value="llamacpp">llama.cpp</option>
+              <option value="vllm">vLLM</option>
+              <option value="sglang">SGLang</option>
+              <option value="exllama">ExLlama</option>
+              <option value="universal" data-i18n="frameworkUniversal">Universal</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="stats" data-i18n-aria-label="benchmarkMetrics" aria-label="Benchmark Metrics">
+        <article class="stat">
+          <p class="label" data-i18n="promptThroughput">Prompt Throughput</p>
+          <p class="val" id="promptThroughput">--</p>
+        </article>
+        <article class="stat">
+          <p class="label" data-i18n="decodeSpeed">Decode Speed</p>
+          <p class="val" id="decodeSpeed">--</p>
+        </article>
+        <article class="stat">
+          <p class="label" data-i18n="generatedTokens">Generated Tokens</p>
+          <p class="val" id="tokens">--</p>
+        </article>
+        <article class="stat">
+          <p class="label" data-i18n="wallTime">Wall Time</p>
+          <p class="val" id="wallTime">--</p>
+        </article>
+      </section>
+
+      <section class="panel chatShell" data-i18n-aria-label="chatBenchmark" aria-label="Chat Benchmark">
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <p class="hint" id="requestSizeHint" aria-live="polite"></p>
+        <div class="composer">
+          <div class="composerMain">
+            <label class="field composerField" for="prompt">
+              <span class="fieldLabel" data-i18n="prompt">Prompt</span>
+              <textarea
+                class="prompt"
+                id="prompt"
+                data-i18n-placeholder="promptPlaceholder"
+                placeholder="Send a prompt, continue the conversation, and watch the live throughput."
+              ></textarea>
+            </label>
+          </div>
+          <div class="composerActions">
+            <label class="btn secondary fileBtn" id="attachBtn" data-i18n-title="attachTitle" title="Attach image, audio, or text file">
+              <span data-i18n="attach">Attach</span>
+              <input id="fileInput" type="file" multiple accept="image/*,audio/*,text/*,.md,.json,.csv,.html,.js,.css">
+            </label>
+            <button class="btn" id="sendBtn" type="button" data-i18n="send">Send</button>
+            <button class="btn danger" id="cancelBtn" type="button" disabled data-i18n="cancel">Cancel</button>
+            <button class="btn secondary" id="clearBtn" type="button" data-i18n="clear">Clear</button>
+          </div>
+          <div class="attachments" id="attachments" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <div class="previewModal" id="previewModal" hidden>
+      <div class="previewDialog" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+        <div class="previewDialogHead">
+          <div>
+            <div class="previewDialogTitle" id="previewTitle" data-i18n="htmlPreview">HTML Preview</div>
+            <div class="previewDialogMeta" data-i18n="htmlPreviewMeta">Runs in an isolated iframe. Network, storage, forms, navigation, and popups are blocked.</div>
+          </div>
+          <button class="btn secondary" id="closePreviewBtn" type="button" data-i18n="close">Close</button>
+        </div>
+        <iframe class="previewFrame" id="previewFrame" title="HTML preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </div>
+
+    <script src="/static/vendor/purify.min.js"></script>
+    <script src="/static/vendor/marked.umd.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

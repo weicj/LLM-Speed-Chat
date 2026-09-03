@@ -1,0 +1,12 @@
+{
+  "name": "llm-speed-chat-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Browser E2E tests for llm-speed-chat",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}

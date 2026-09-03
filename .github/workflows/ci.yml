@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Smoke installed package
+        run: python scripts/smoke-installed.py
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Python package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Install Playwright dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run browser E2E tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: llm-speed-chat-playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [test, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Smoke wheel from outside repository
+        run: |
+          python -m venv /tmp/llm-speed-chat-wheel
+          . /tmp/llm-speed-chat-wheel/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+          cd /tmp
+          python "$GITHUB_WORKSPACE/scripts/smoke-installed.py"
+      - name: Build container image
+        run: docker build -t llm-speed-chat:test .
+      - name: Smoke container image
+        run: |
+          docker run -d --rm --name llm-speed-chat-smoke -p 18080:8080 llm-speed-chat:test
+          python scripts/smoke_http.py --base-url http://127.0.0.1:18080 --wait-seconds 30
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs llm-speed-chat-smoke || true
+      - name: Stop container smoke instance
+        if: always()
+        run: docker stop llm-speed-chat-smoke || true
+      - name: Audit release metadata
+        run: python scripts/audit-release-metadata.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: llm-speed-chat-dist
+          path: dist/*

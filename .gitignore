@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+.venv/
+.env
+node_modules/
+playwright-report/
+test-results/
+runs/
+dist/
+build/
+*.egg-info/

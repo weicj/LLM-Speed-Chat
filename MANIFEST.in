@@ -1,0 +1,12 @@
+include .env.example
+include README.md
+include RELEASE.md
+include CHANGELOG.md
+include Dockerfile
+include compose.yaml
+include package.json
+include package-lock.json
+include playwright.config.js
+recursive-include scripts *.py *.sh
+recursive-include e2e *.js *.svg
+recursive-include src/llm_speed_chat/static *.html *.css *.js *.md
