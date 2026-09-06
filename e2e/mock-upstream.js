@@ -80,6 +80,15 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      if (lastUserText.includes("scroll-position-message")) {
+        streamChunks(res, [
+          {delayMs: 0, data: {choices: [{delta: {content: Array.from({length: 80}, (_, index) => `Line ${index + 1}`).join("\n")}}]}},
+          {delayMs: 700, data: {choices: [{delta: {content: "\nNew streamed line."}}]}},
+          {delayMs: 0, data: {usage: {prompt_tokens: 4, completion_tokens: 81}}},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("thinking-message")) {
         streamChunks(res, [
           {delayMs: 0, data: {choices: [{delta: {reasoning_content: "Line one\nLine two\nLine three\nLine four\nLine five\nLine six"}}]}},

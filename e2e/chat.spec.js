@@ -377,6 +377,8 @@ test("renders assistant output as sanitized Markdown", async ({ page }) => {
   await expect(reply.locator(".codeCopyButton")).toHaveAccessibleName("Copy");
   await expect(reply.locator(".codeSaveButton")).toHaveAccessibleName("Save");
   await expect(reply.locator(".previewBtn")).toBeVisible();
+  expect(await reply.locator("pre").evaluate((node) => node.nextElementSibling?.classList.contains("codeActions"))).toBe(true);
+  await expect(reply.locator(".previewBtn")).toHaveText("\u25b6");
   await expect(reply.locator("blockquote")).toHaveText("A quote");
   await expect(reply.locator("a")).toHaveAttribute("rel", "noopener noreferrer");
   await expect(reply.locator("a")).toHaveAttribute("target", "_blank");
@@ -486,6 +488,18 @@ test("keeps the next prompt editable while an answer is streaming", async ({ pag
   await page.locator("#cancelBtn").click();
   await expect(page.locator("#prompt")).toHaveValue("next prompt\n");
   await expect(page.locator("#sendBtn")).toBeEnabled();
+});
+
+test("preserves the chat scroll position when a user reads earlier streamed output", async ({ page }) => {
+  await page.locator("#prompt").fill("scroll-position-message");
+  await page.locator("#sendBtn").click();
+
+  const reply = page.locator(".msg.assistant").last();
+  const chat = page.locator("#chat");
+  await expect(reply).toContainText("Line 80");
+  await chat.evaluate((element) => { element.scrollTop = 0; });
+  await expect(reply).toContainText("New streamed line.");
+  expect(await chat.evaluate((element) => element.scrollTop)).toBe(0);
 });
 
 test("client-side request-size guardrail blocks oversized payloads before /chat", async ({ browser }) => {

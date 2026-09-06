@@ -452,11 +452,13 @@ body{
 .msg.assistant blockquote{margin:10px 0;padding:2px 0 2px 12px;border-left:3px solid #98a2b3;color:#475467}
 .msg.assistant hr{margin:14px 0;border:0;border-top:1px solid #cfd7e3}
 .msg.assistant :not(pre) > code{padding:2px 5px;border-radius:4px;background:#dce3ec;font:0.9em ui-monospace,SFMono-Regular,Menlo,monospace}
-.msg.assistant pre{position:relative;margin:10px 0;max-width:100%;overflow:auto;padding:10px 94px 10px 10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.msg.assistant pre{margin:10px 0;max-width:100%;overflow:auto;padding:10px;border:1px solid #d8dee8;border-radius:8px;background:#fff;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
 .msg.assistant pre code{font:inherit}
-.codeCopyButton,.codeSaveButton{position:absolute;top:6px;width:24px;height:24px;padding:0;border:1px solid #c5d0df;border-radius:4px;background:#fff;color:#475467;font-size:15px;line-height:1;cursor:pointer}
-.codeCopyButton{right:6px}.codeSaveButton{right:34px}
-.codeCopyButton:hover,.codeSaveButton:hover{border-color:#98a2b3;background:#f8fafc;color:#111827}.codeCopyButton[data-state="copied"]{border-color:#12b76a;color:#067647}.codeCopyButton[data-state="error"]{border-color:#f04438;color:#b42318}
+.codeActions{display:flex;justify-content:flex-end;gap:3px;margin:-4px 0 10px}
+.codeActions .messageAction{background:#fff}
+.codeActions .messageAction:hover{border-color:#98a2b3;background:#f8fafc;color:#111827}
+.previewBtn{border-color:#b9c9e6;background:#edf3ff;color:#1d4ed8}
+.codeCopyButton[data-state="copied"]{border-color:#12b76a;color:#067647}.codeCopyButton[data-state="error"]{border-color:#f04438;color:#b42318}
 .msg.assistant table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:10px 0;font-size:13px}
 .msg.assistant th,.msg.assistant td{padding:7px 9px;border:1px solid #d8dee8;text-align:left;vertical-align:top}
 .msg.assistant th{background:#f8fafc;font-weight:700}
@@ -590,7 +592,6 @@ body{
 .attachmentChip{display:flex;align-items:center;gap:8px;max-width:260px;padding:7px 9px;border:1px solid #d8dee8;border-radius:8px;background:#f8fafc;font-size:12px;overflow:hidden}
 .attachmentChip img{width:30px;height:30px;object-fit:cover;border-radius:4px}.attachmentChip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachmentChip button{border:0;background:transparent;font-size:16px;cursor:pointer}
 .fileBtn{display:inline-flex;align-items:center;justify-content:center}.fileBtn input{display:none}.fileBtn.disabled{opacity:.55;pointer-events:none}
-.previewBtn{position:absolute;top:6px;right:62px;width:24px;height:24px;padding:0;display:grid;place-items:center;border:1px solid #b9c9e6;border-radius:4px;background:#edf3ff;color:#1d4ed8;font-size:15px;line-height:1;cursor:pointer}
 .previewModal[hidden]{display:none!important}.previewModal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.55)}.previewDialog{width:min(1050px,100%);height:min(760px,100%);display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden}.previewDialogHead{display:flex;justify-content:space-between;gap:16px;padding:14px;border-bottom:1px solid #d8dee8}.previewDialogTitle{font-weight:750}.previewDialogMeta{margin-top:4px;color:#667085;font-size:12px}.previewFrame{width:100%;height:100%;border:0}
 
 .composerField{
@@ -899,7 +900,4 @@ html[data-theme="dark"] .btn:disabled{
     max-width:90%;
   }
 
-  .msg.assistant pre{
-    padding-top:38px;
-  }
 }

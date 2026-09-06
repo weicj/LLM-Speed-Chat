@@ -64,6 +64,7 @@
   const themeStorageKey = "llm-speed-chat.theme";
   const metricBackendStorageKey = "llm-speed-chat.metric-backend";
   const autoModelLoadDelayMs = 400;
+  const chatScrollThreshold = 24;
 
   const TRANSLATIONS = {
     en: {
@@ -743,6 +744,14 @@
     chatEl.scrollTop = chatEl.scrollHeight;
   }
 
+  function isNearBottom(element) {
+    return element.scrollHeight - element.scrollTop - element.clientHeight <= chatScrollThreshold;
+  }
+
+  function isChatNearBottom() {
+    return isNearBottom(chatEl);
+  }
+
   function renderAssistantMessage(body, text) {
     body.textContent = "";
     if (!window.marked || !window.DOMPurify) {
@@ -762,45 +771,52 @@
 
     for (const code of body.querySelectorAll("pre > code")) {
       const block = code.parentElement;
+      const codeActions = document.createElement("div");
+      codeActions.className = "codeActions";
+
+      const languageClass = Array.from(code.classList).find((name) => name.startsWith("language-"));
+      const language = languageClass ? languageClass.slice("language-".length).toLowerCase() : "";
+      const documentLanguage = language === "htm" ? "html" : language;
+
+      if (documentLanguage === "html" || documentLanguage === "svg") {
+        const preview = document.createElement("button");
+        preview.className = "messageAction previewBtn";
+        preview.type = "button";
+        preview.textContent = "\u25b6";
+        preview.dataset.action = "preview";
+        refreshActionButton(preview);
+        preview.title = "Open sandboxed preview";
+        preview.addEventListener("click", () => openPreview(code.textContent || ""));
+        codeActions.appendChild(preview);
+
+        const saveButton = document.createElement("button");
+        saveButton.className = "messageAction codeSaveButton";
+        saveButton.type = "button";
+        saveButton.textContent = "\u21e9";
+        saveButton.dataset.action = "save";
+        refreshActionButton(saveButton);
+        saveButton.addEventListener("click", () => saveCodeBlock(code.textContent || "", documentLanguage));
+        codeActions.appendChild(saveButton);
+      }
+
       const copyButton = document.createElement("button");
-      copyButton.className = "codeCopyButton";
+      copyButton.className = "messageAction codeCopyButton";
       copyButton.type = "button";
       copyButton.textContent = "\u29c9";
       copyButton.dataset.action = "copy";
       refreshActionButton(copyButton);
       copyButton.addEventListener("click", () => copyText(code.textContent || "", copyButton));
-      block.appendChild(copyButton);
-
-      const languageClass = Array.from(code.classList).find((name) => name.startsWith("language-"));
-      const language = languageClass ? languageClass.slice("language-".length).toLowerCase() : "";
-      const documentLanguage = language === "htm" ? "html" : language;
-      if (documentLanguage !== "html" && documentLanguage !== "svg") continue;
-
-      const saveButton = document.createElement("button");
-      saveButton.className = "codeSaveButton";
-      saveButton.type = "button";
-      saveButton.textContent = "\u21e9";
-      saveButton.dataset.action = "save";
-      refreshActionButton(saveButton);
-      saveButton.addEventListener("click", () => saveCodeBlock(code.textContent || "", documentLanguage));
-      block.appendChild(saveButton);
-
-      const preview = document.createElement("button");
-      preview.className = "previewBtn";
-      preview.type = "button";
-      preview.textContent = "\u25a3";
-      preview.setAttribute("aria-label", "Open sandboxed preview");
-      preview.title = "Open sandboxed preview";
-      preview.addEventListener("click", () => openPreview(code.textContent || ""));
-      block.appendChild(preview);
+      codeActions.appendChild(copyButton);
+      block.after(codeActions);
     }
   }
 
   function renderReasoningMessage(reasoningMessage, text) {
+    const shouldFollowOutput = isNearBottom(reasoningMessage.body);
     reasoningMessage.rawText = text;
     reasoningMessage.container.hidden = !text;
     reasoningMessage.body.textContent = text;
-    reasoningMessage.body.scrollTop = reasoningMessage.body.scrollHeight;
+    if (shouldFollowOutput) reasoningMessage.body.scrollTop = reasoningMessage.body.scrollHeight;
   }
 
   function messageText(message) {
@@ -952,7 +968,7 @@
       return;
     }
     if (!message.previewButton) {
-      message.previewButton = appendActionButton(message.actions, "\u25a3", "preview", () => {
+      message.previewButton = appendActionButton(message.actions, "\u25b6", "preview", () => {
         const currentDocument = rawDocumentMarkup(messageText(message));
         if (currentDocument) openPreview(currentDocument.text);
       });
@@ -1287,6 +1303,7 @@
       }
       if (!payload || typeof payload !== "object") return;
 
+      const shouldFollowOutput = isChatNearBottom();
       const choice = Array.isArray(payload.choices) ? payload.choices[0] : null;
       const delta = choice && typeof choice === "object" ? choice.delta : null;
       const reasoningPiece = delta && typeof delta === "object" && typeof delta.reasoning_content === "string"
@@ -1308,7 +1325,7 @@
         renderAssistantMessage(assistantMessage.body, assistantText);
         updateAssistantPreviewAction(assistantMessage);
       }
-      scrollChatToBottom();
+      if (shouldFollowOutput) scrollChatToBottom();
     };
 
     while (true) {
