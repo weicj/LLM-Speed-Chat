@@ -34,12 +34,15 @@ const server = http.createServer((req, res) => {
       const authorization = req.headers.authorization || "";
       const isLocalVllm = authorization === "Bearer local-vllm";
       const isLocalLlama = authorization === "Bearer local-llama";
+      const isLocalExLlama = authorization === "Bearer local-exllama";
       res.writeHead(200, {...corsHeaders, "Content-Type": "application/json"});
       res.end(JSON.stringify({
         data: isLocalVllm
           ? [{id: "local-vllm-model", owned_by: "vllm"}]
           : isLocalLlama
             ? [{id: "local-llama-model", owned_by: "llamacpp"}]
+            : isLocalExLlama
+              ? [{id: "local-exllama-model", owned_by: "exllama"}]
             : [{id: "demo-model", root: "demo-root"}],
       }));
       return;
@@ -219,6 +222,22 @@ const server = http.createServer((req, res) => {
             data: {
               choices: [{delta: {content: "reports usage."}}],
               ...(continuousUsage ? {usage: {prompt_tokens: 9, completion_tokens: 2}} : {}),
+            },
+          },
+        ]);
+        return;
+      }
+
+      if (lastUserText.includes("exl3-live-metrics")) {
+        streamChunks(res, [
+          {delayMs: 150, data: {choices: [{delta: {content: "ExLlama "}}]}},
+          {delayMs: 300, data: {choices: [{delta: {content: "metrics."}}]}},
+          {
+            delayMs: 0,
+            data: {
+              choices: [],
+              usage: {prompt_tokens: 12, completion_tokens: 3},
+              timings: {prompt_n: 12, prompt_per_second: 48, predicted_n: 3, predicted_per_second: 20},
             },
           },
         ]);

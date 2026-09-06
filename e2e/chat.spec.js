@@ -244,6 +244,26 @@ test("SGLang source requests exact continuous usage without unsupported token ID
   await expect(page.locator("#decodeSpeed")).not.toContainText("~");
 });
 
+test("uses ExLlama's thinking flag and exact server timing metrics", async ({ page }) => {
+  const requestPromise = page.waitForRequest((request) => request.url().endsWith("/chat"));
+
+  await page.locator("#apiKey").fill("local-exllama");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-exllama-model");
+  await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (ExLlama)");
+  await page.locator("#thinkingEnabled").check();
+  await page.locator("#prompt").fill("exl3-live-metrics");
+  await page.locator("#sendBtn").click();
+
+  const payload = JSON.parse((await requestPromise).postData() || "{}");
+  expect(payload.enable_thinking).toBe(true);
+  expect(payload.chat_template_kwargs).toBeUndefined();
+  await expect(page.locator(".msg.assistant").last()).toContainText("ExLlama metrics.");
+  await expect(page.locator("#promptThroughput")).toHaveText("48.0 tok/s");
+  await expect(page.locator("#decodeSpeed")).toHaveText("20.0 tok/s");
+  await expect(page.locator("#tokens")).toHaveText("3");
+});
+
 test("gives every message copy and save actions, with retry on user messages", async ({ page }) => {
   await page.locator("#prompt").fill("hello browser");
   await page.locator("#sendBtn").click();
@@ -408,7 +428,7 @@ test("saves a standalone HTML assistant reply as an HTML document", async ({ pag
   const reply = page.locator(".msg.assistant").last();
   await expect(reply.locator("pre code.language-html")).toContainText("Saved HTML");
   const downloadPromise = page.waitForEvent("download");
-  await reply.locator(".messageAction[data-action='save']").click();
+  await reply.locator(".messageActions > .messageAction[data-action='save']").click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^llm-speed-chat-answer-.*\.html$/);
 });

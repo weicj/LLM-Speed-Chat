@@ -50,8 +50,8 @@ PORT=8080
 
 The Framework selector is auto-detected from model metadata and can be overridden with `llama.cpp`, vLLM, SGLang, ExLlama, or Universal.
 
-- Local llama.cpp and vLLM endpoints request token IDs; llama.cpp timing fields are used for its final decode rate.
-- SGLang requests continuous usage statistics; ExLlama uses its standard OpenAI-compatible usage response.
+- Local llama.cpp and vLLM endpoints request token IDs. Any framework that returns standard `timings` can provide exact prefill/decode rates.
+- SGLang requests continuous usage statistics. ExLlama uses its standard OpenAI-compatible usage response and displays exact prefill/decode rates when the endpoint returns `timings`.
 - Universal is the fallback for hosted or unrecognized APIs. Missing exact counts are marked provisional with `~` until standard usage is returned.
 - Wall Time is measured in the browser from request start through stream completion, cancellation, or failure.
 

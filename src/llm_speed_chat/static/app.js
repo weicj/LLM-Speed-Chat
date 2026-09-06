@@ -545,7 +545,7 @@
     let liveDecodeIsProvisional = true;
     let finalDecodeRate = null;
     let finalDecodeIsProvisional = true;
-    let latestLlamaDecodeRate = null;
+    let latestServerDecodeRate = null;
     let firstDecodeAt = null;
     let lastDecodeAt = null;
     let streamedCompletionTokens = 0;
@@ -579,8 +579,8 @@
     }
 
     function useFinalDecodeRate() {
-      if (framework === "llamacpp" && latestLlamaDecodeRate !== null) {
-        finalDecodeRate = latestLlamaDecodeRate;
+      if (latestServerDecodeRate !== null) {
+        finalDecodeRate = latestServerDecodeRate;
         finalDecodeIsProvisional = false;
         return;
       }
@@ -633,8 +633,8 @@
           cumulativeCompletionTokens = Math.max(cumulativeCompletionTokens || 0, reportedCompletionTokens);
         }
         if (reportedPromptRate !== null) promptTimingRate = reportedPromptRate;
-        if (framework === "llamacpp" && reportedDecodeRate !== null) {
-          latestLlamaDecodeRate = reportedDecodeRate;
+        if (reportedDecodeRate !== null) {
+          latestServerDecodeRate = reportedDecodeRate;
         }
       }
 
@@ -669,11 +669,10 @@
           ? visiblePromptTokens / ttftSeconds
           : null
       );
-      const localDecodeRate = framework === "llamacpp" ? latestLlamaDecodeRate : null;
-      const decodeTokS = finalDecodeRate ?? localDecodeRate ?? liveDecodeRate;
+      const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
-        : localDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
+        : latestServerDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
       updateMetrics({
         prompt_tok_s: promptTokS,
         decode_tok_s: decodeTokS,
@@ -1100,9 +1099,15 @@
         ? Number(tempEl.value)
         : CONFIG.defaultTemperature,
       thinking_budget_tokens: thinkingBudgetTokens(),
-      // The budget stops an existing thought; this controls whether the template starts one.
-      chat_template_kwargs: {enable_thinking: thinkingEnabledEl.checked},
     };
+
+    // ExLlama's OpenAI-compatible server reads this template switch at top level.
+    if (framework === "exllama") {
+      payload.enable_thinking = thinkingEnabledEl.checked;
+    } else {
+      // The budget stops an existing thought; this controls whether the template starts one.
+      payload.chat_template_kwargs = {enable_thinking: thinkingEnabledEl.checked};
+    }
 
     if (framework === "sglang") {
       // SGLang chat streams expose exact cumulative usage through this standard extension.
