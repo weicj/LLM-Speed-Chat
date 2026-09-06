@@ -244,13 +244,14 @@ test("SGLang source requests exact continuous usage without unsupported token ID
   await expect(page.locator("#decodeSpeed")).not.toContainText("~");
 });
 
-test("uses ExLlama's thinking flag and exact server timing metrics", async ({ page }) => {
+test("uses ExLlama endpoint capabilities even with the Universal metrics override", async ({ page }) => {
   const requestPromise = page.waitForRequest((request) => request.url().endsWith("/chat"));
 
   await page.locator("#apiKey").fill("local-exllama");
   await page.locator("#connectBtn").click();
   await expect(page.locator("#model")).toHaveValue("local-exllama-model");
   await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (ExLlama)");
+  await page.locator("#metricBackend").selectOption("universal");
   await page.locator("#thinkingEnabled").check();
   await page.locator("#prompt").fill("exl3-live-metrics");
   await page.locator("#sendBtn").click();

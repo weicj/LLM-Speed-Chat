@@ -594,8 +594,6 @@
     }
 
     function recordLocalFields(event, choice, at) {
-      if (framework === "universal") return 0;
-
       let exactDelta = 0;
       let cumulativeCompletionTokens = null;
 
@@ -1087,6 +1085,9 @@
   function buildChatPayload(text, contentOverride = null) {
     const content = contentOverride === null ? buildChatContent(text) : contentOverride;
     const framework = currentFramework();
+    // Endpoint capabilities come from detected metadata. The Framework control may
+    // be retained from an older session purely as a metrics override.
+    const isExLlamaEndpoint = detectedFramework === "exllama" || framework === "exllama";
     const payload = {
       ...buildConnectionPayload(),
       model: currentModel(),
@@ -1102,7 +1103,7 @@
     };
 
     // ExLlama's OpenAI-compatible server reads this template switch at top level.
-    if (framework === "exllama") {
+    if (isExLlamaEndpoint) {
       payload.enable_thinking = thinkingEnabledEl.checked;
     } else {
       // The budget stops an existing thought; this controls whether the template starts one.
