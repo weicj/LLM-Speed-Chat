@@ -1312,8 +1312,12 @@
       const shouldFollowOutput = isChatNearBottom();
       const choice = Array.isArray(payload.choices) ? payload.choices[0] : null;
       const delta = choice && typeof choice === "object" ? choice.delta : null;
-      const reasoningPiece = delta && typeof delta === "object" && typeof delta.reasoning_content === "string"
-        ? delta.reasoning_content
+      // vLLM streams Qwen reasoning as `reasoning`; other compatible servers
+      // commonly use `reasoning_content`.
+      const reasoningPiece = delta && typeof delta === "object"
+        ? (typeof delta.reasoning_content === "string"
+          ? delta.reasoning_content
+          : (typeof delta.reasoning === "string" ? delta.reasoning : ""))
         : "";
       const contentPiece = delta && typeof delta === "object" && typeof delta.content === "string"
         ? delta.content

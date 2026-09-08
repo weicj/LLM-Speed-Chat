@@ -386,6 +386,23 @@ test("keeps streamed reasoning in its own five-line scrolling bubble", async ({ 
   await expect(page.locator(".msg.assistant").last()).not.toContainText("Line one");
 });
 
+test("renders vLLM reasoning stream fields in the thinking panel", async ({ page }) => {
+  const requestPromise = page.waitForRequest((request) => request.url().endsWith("/chat"));
+
+  await page.locator("#apiKey").fill("local-vllm");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-vllm-model");
+  await page.locator("#thinkingEnabled").check();
+  await page.locator("#prompt").fill("vllm-reasoning-message");
+  await page.locator("#sendBtn").click();
+
+  const payload = JSON.parse((await requestPromise).postData() || "{}");
+  expect(payload.chat_template_kwargs).toEqual({enable_thinking: true});
+  await expect(page.locator(".reasoningContent").last()).toHaveText("vLLM thought one. vLLM thought two.");
+  await expect(page.locator(".msg.assistant").last().locator(".messageBody")).toHaveText("Answer after vLLM thinking.");
+  await expect(page.locator(".msg.assistant").last()).not.toContainText("vLLM thought one");
+});
+
 test("renders assistant output as sanitized Markdown", async ({ page }) => {
   await page.locator("#prompt").fill("markdown-message");
   await page.locator("#sendBtn").click();

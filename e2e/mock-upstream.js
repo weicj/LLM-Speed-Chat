@@ -101,6 +101,16 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      if (lastUserText.includes("vllm-reasoning-message")) {
+        streamChunks(res, [
+          {delayMs: 0, data: {choices: [{delta: {reasoning: "vLLM thought one. "}}]}},
+          {delayMs: 0, data: {choices: [{delta: {reasoning: "vLLM thought two."}}]}},
+          {delayMs: 0, data: {choices: [{delta: {content: "Answer after vLLM thinking."}}]}},
+          {delayMs: 0, data: {usage: {prompt_tokens: 7, completion_tokens: 5}}},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("thinking-unlimited")) {
         streamChunks(res, [
           {delayMs: 0, data: {choices: [{delta: {content: `Thinking budget: ${payload.thinking_budget_tokens}; template thinking: ${payload.chat_template_kwargs && payload.chat_template_kwargs.enable_thinking}`}}]}},

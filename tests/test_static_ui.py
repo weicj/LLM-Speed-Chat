@@ -85,6 +85,7 @@ class StaticUiTest(unittest.TestCase):
         self.assertNotIn("decodeTimingRate", source)
         self.assertIn("payload.chat_template_kwargs = {enable_thinking: thinkingEnabledEl.checked}", source)
         self.assertIn("reasoning_content", source)
+        self.assertIn("delta.reasoning", source)
         self.assertIn("renderReasoningMessage", source)
         self.assertIn("window.marked.parse", source)
         self.assertIn("window.DOMPurify.sanitize", source)
