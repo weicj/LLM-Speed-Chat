@@ -492,6 +492,14 @@
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
 
+  function readPromptTokenCount(value) {
+    const count = readTokenCount(value);
+    // A chat request always has at least one prompt token. Some OpenAI-
+    // compatible servers emit 0 or [] as a placeholder in the final chunk;
+    // never let that placeholder erase a measured/estimated prompt count.
+    return count !== null && count > 0 ? count : null;
+  }
+
   function countTokenIds(value) {
     return Array.isArray(value) ? value.length : null;
   }
@@ -556,7 +564,7 @@
 
     function recordUsage(usage) {
       if (!usage || typeof usage !== "object") return;
-      const reportedPromptTokens = readTokenCount(usage.prompt_tokens);
+      const reportedPromptTokens = readPromptTokenCount(usage.prompt_tokens);
       const reportedCompletionTokens = readTokenCount(usage.completion_tokens);
       if (reportedPromptTokens !== null) promptTokens = reportedPromptTokens;
       if (reportedCompletionTokens !== null) completionTokens = reportedCompletionTokens;
@@ -600,7 +608,7 @@
       const eventPromptTokenIds = countTokenIds(event.prompt_token_ids);
       const choicePromptTokenIds = choice && countTokenIds(choice.prompt_token_ids);
       const promptTokenIdCount = eventPromptTokenIds ?? choicePromptTokenIds;
-      if (promptTokenIdCount !== null) promptTokens = promptTokenIdCount;
+      if (promptTokenIdCount !== null && promptTokenIdCount > 0) promptTokens = promptTokenIdCount;
 
       const completionTokenIds = choice && countTokenIds(choice.token_ids);
       if (completionTokenIds !== null && completionTokenIds > 0) {
@@ -611,7 +619,7 @@
 
       for (const metadata of [event.meta_info, choice && choice.meta_info]) {
         if (!metadata || typeof metadata !== "object") continue;
-        const reportedPromptTokens = readTokenCount(metadata.prompt_tokens);
+        const reportedPromptTokens = readPromptTokenCount(metadata.prompt_tokens);
         const reportedCompletionTokens = readTokenCount(metadata.completion_tokens);
         if (reportedPromptTokens !== null) promptTokens = reportedPromptTokens;
         if (reportedCompletionTokens !== null) {
@@ -621,7 +629,7 @@
       }
 
       for (const timings of [event.timings, choice && choice.timings]) {
-        const reportedPromptTokens = readTokenCount(timings && timings.prompt_n);
+        const reportedPromptTokens = readPromptTokenCount(timings && timings.prompt_n);
         const reportedCompletionTokens = readTokenCount(timings && timings.predicted_n);
         const reportedPromptRate = readTimingRate(timings, "prompt_per_second");
         const reportedDecodeRate = readTimingRate(timings, "predicted_per_second");

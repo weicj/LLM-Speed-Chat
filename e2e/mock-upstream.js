@@ -106,7 +106,9 @@ const server = http.createServer((req, res) => {
           {delayMs: 0, data: {choices: [{delta: {reasoning: "vLLM thought one. "}}]}},
           {delayMs: 0, data: {choices: [{delta: {reasoning: "vLLM thought two."}}]}},
           {delayMs: 0, data: {choices: [{delta: {content: "Answer after vLLM thinking."}}]}},
-          {delayMs: 0, data: {usage: {prompt_tokens: 7, completion_tokens: 5}}},
+          // Some vLLM-compatible deployments include empty prompt metadata in
+          // the terminal chunk. The browser must retain its prompt estimate.
+          {delayMs: 0, data: {choices: [], prompt_token_ids: [], usage: {prompt_tokens: 0, completion_tokens: 5}}},
         ]);
         return;
       }

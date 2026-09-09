@@ -401,6 +401,8 @@ test("renders vLLM reasoning stream fields in the thinking panel", async ({ page
   await expect(page.locator(".reasoningContent").last()).toHaveText("vLLM thought one. vLLM thought two.");
   await expect(page.locator(".msg.assistant").last().locator(".messageBody")).toHaveText("Answer after vLLM thinking.");
   await expect(page.locator(".msg.assistant").last()).not.toContainText("vLLM thought one");
+  await expect(page.locator("#promptThroughput")).toContainText("tok/s");
+  await expect(page.locator("#promptThroughput")).not.toHaveText("--");
 });
 
 test("renders assistant output as sanitized Markdown", async ({ page }) => {
