@@ -85,9 +85,22 @@
           <p class="label" data-i18n="promptThroughput">Prompt Throughput</p>
           <p class="val" id="promptThroughput">--</p>
         </article>
-        <article class="stat">
-          <p class="label" data-i18n="decodeSpeed">Decode Speed</p>
-          <p class="val" id="decodeSpeed">--</p>
+        <article class="stat decodeStat">
+          <div class="decodeStatHeader">
+            <div>
+              <p class="label" data-i18n="decodeSpeed">Decode Speed</p>
+              <p class="val" id="decodeSpeed">--</p>
+            </div>
+            <button class="decodeDetailsButton" id="decodeDetailsButton" type="button" aria-expanded="false" aria-controls="decodeDetails" data-i18n-aria-label="showDecodeDetails" aria-label="Show decode speed details">
+              <span class="chevronIcon" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="decodeDetails" id="decodeDetails" hidden>
+            <div class="decodeDetail"><span class="label" data-i18n="peakDecodeSpeed">Peak 99%</span><span class="detailVal" id="peakDecodeSpeed">--</span></div>
+            <div class="decodeDetail"><span class="label" data-i18n="midDecodeSpeed">Mid 50%</span><span class="detailVal" id="midDecodeSpeed">--</span></div>
+            <div class="decodeDetail"><span class="label" data-i18n="meanDecodeSpeed">Mean AVG</span><span class="detailVal" id="meanDecodeSpeed">--</span></div>
+            <div class="decodeDetail"><span class="label" data-i18n="lowDecodeSpeed">Low 1%</span><span class="detailVal" id="lowDecodeSpeed">--</span></div>
+          </div>
         </article>
         <article class="stat">
           <p class="label" data-i18n="generatedTokens">Generated Tokens</p>

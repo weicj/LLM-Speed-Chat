@@ -41,6 +41,12 @@
   const apiStatusEl = el("apiStatus");
   const promptThroughputEl = el("promptThroughput");
   const decodeSpeedEl = el("decodeSpeed");
+  const peakDecodeSpeedEl = el("peakDecodeSpeed");
+  const midDecodeSpeedEl = el("midDecodeSpeed");
+  const meanDecodeSpeedEl = el("meanDecodeSpeed");
+  const lowDecodeSpeedEl = el("lowDecodeSpeed");
+  const decodeDetailsButton = el("decodeDetailsButton");
+  const decodeDetailsEl = el("decodeDetails");
   const tokensEl = el("tokens");
   const wallTimeEl = el("wallTime");
   const attachBtn = el("attachBtn");
@@ -97,6 +103,11 @@
       benchmarkMetrics: "Benchmark Metrics",
       promptThroughput: "Prompt Throughput",
       decodeSpeed: "Decode Speed",
+      peakDecodeSpeed: "Peak 99%",
+      midDecodeSpeed: "Mid 50%",
+      meanDecodeSpeed: "Mean AVG",
+      lowDecodeSpeed: "Low 1%",
+      showDecodeDetails: "Show decode speed details",
       generatedTokens: "Generated Tokens",
       wallTime: "Wall Time",
       chatBenchmark: "Chat Benchmark",
@@ -149,6 +160,11 @@
       benchmarkMetrics: "性能指标",
       promptThroughput: "提示吞吐",
       decodeSpeed: "解码速度",
+      peakDecodeSpeed: "最高 99%",
+      midDecodeSpeed: "中位 50%",
+      meanDecodeSpeed: "平均值 AVG",
+      lowDecodeSpeed: "最低 1% 瞬时速度",
+      showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
       wallTime: "总耗时",
       chatBenchmark: "对话测试",
@@ -482,6 +498,10 @@
   function updateMetrics(metrics) {
     promptThroughputEl.textContent = formatRate(metrics.prompt_tok_s, metrics.prompt_provisional);
     decodeSpeedEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
+    peakDecodeSpeedEl.textContent = formatRate(metrics.peak_decode_tok_s, metrics.peak_decode_provisional);
+    midDecodeSpeedEl.textContent = formatRate(metrics.mid_decode_tok_s, metrics.mid_decode_provisional);
+    meanDecodeSpeedEl.textContent = formatRate(metrics.mean_decode_tok_s, metrics.mean_decode_provisional);
+    lowDecodeSpeedEl.textContent = formatRate(metrics.low_decode_tok_s, metrics.low_decode_provisional);
     tokensEl.textContent = Number.isFinite(metrics.completion_tokens)
       ? `${metrics.completion_provisional ? "~" : ""}${Math.trunc(metrics.completion_tokens)}`
       : "--";
@@ -551,6 +571,9 @@
     let promptTimingRate = null;
     let liveDecodeRate = null;
     let liveDecodeIsProvisional = true;
+    const decodeRateSamples = [];
+    let lastTimingPredictedTokens = null;
+    let lastTimingPredictedMs = null;
     let finalDecodeRate = null;
     let finalDecodeIsProvisional = true;
     let latestServerDecodeRate = null;
@@ -574,10 +597,60 @@
       if (!Number.isFinite(count) || count <= 0) return;
       if (firstDecodeAt === null) firstDecodeAt = at;
       if (lastDecodeAt !== null && at > lastDecodeAt) {
-        liveDecodeRate = count * 1000 / (at - lastDecodeAt);
+        const measuredRate = count * 1000 / (at - lastDecodeAt);
+        liveDecodeRate = measuredRate;
+        recordDecodeRateSample(measuredRate, !exact);
         liveDecodeIsProvisional = !exact;
       }
       lastDecodeAt = at;
+    }
+
+    function recordDecodeRateSample(rate, provisional) {
+      if (!Number.isFinite(rate) || rate <= 0) return;
+      decodeRateSamples.push({rate, provisional});
+    }
+
+    function decodeRateSummary() {
+      if (!decodeRateSamples.length) {
+        return {
+          peak: null,
+          mid: null,
+          mean: null,
+          low: null,
+          peakProvisional: true,
+          midProvisional: true,
+          meanProvisional: true,
+          lowProvisional: true,
+        };
+      }
+
+      const sortedSamples = [...decodeRateSamples].sort((left, right) => left.rate - right.rate);
+      const average = (samples) => samples.reduce((total, sample) => total + sample.rate, 0) / samples.length;
+      const percentile = (fraction) => {
+        const position = (sortedSamples.length - 1) * fraction;
+        const lowerIndex = Math.floor(position);
+        const upperIndex = Math.ceil(position);
+        const lower = sortedSamples[lowerIndex];
+        const upper = sortedSamples[upperIndex];
+        const ratio = position - lowerIndex;
+        return {
+          value: lower.rate + (upper.rate - lower.rate) * ratio,
+          provisional: lower.provisional || upper.provisional,
+        };
+      };
+      const peak = percentile(0.99);
+      const mid = percentile(0.5);
+      const low = percentile(0.01);
+      return {
+        peak: peak.value,
+        mid: mid.value,
+        mean: average(sortedSamples),
+        low: low.value,
+        peakProvisional: peak.provisional,
+        midProvisional: mid.provisional,
+        meanProvisional: sortedSamples.some((sample) => sample.provisional),
+        lowProvisional: low.provisional,
+      };
     }
 
     function finalBrowserDecodeRate() {
@@ -642,6 +715,29 @@
         if (reportedDecodeRate !== null) {
           latestServerDecodeRate = reportedDecodeRate;
         }
+
+        // llama.cpp exposes cumulative token/time totals on each timed chunk;
+        // their deltas give a model-side instantaneous rate without network jitter.
+        const predictedMs = Number(timings && timings.predicted_ms);
+        if (
+          reportedCompletionTokens !== null
+          && Number.isFinite(predictedMs)
+          && predictedMs > 0
+          && lastTimingPredictedTokens !== null
+          && lastTimingPredictedMs !== null
+          && reportedCompletionTokens > lastTimingPredictedTokens
+          && predictedMs > lastTimingPredictedMs
+        ) {
+          recordDecodeRateSample(
+            (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
+              / (predictedMs - lastTimingPredictedMs),
+            false,
+          );
+        }
+        if (reportedCompletionTokens !== null && Number.isFinite(predictedMs) && predictedMs > 0) {
+          lastTimingPredictedTokens = reportedCompletionTokens;
+          lastTimingPredictedMs = predictedMs;
+        }
       }
 
       if (framework === "sglang") {
@@ -679,13 +775,22 @@
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
         : latestServerDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
+      const decodeRateStats = decodeRateSummary();
       updateMetrics({
         prompt_tok_s: promptTokS,
         decode_tok_s: decodeTokS,
+        peak_decode_tok_s: decodeRateStats.peak,
+        mid_decode_tok_s: decodeRateStats.mid,
+        mean_decode_tok_s: decodeRateStats.mean,
+        low_decode_tok_s: decodeRateStats.low,
         completion_tokens: visibleCompletionTokens,
         wall_s: wallSeconds,
         prompt_provisional: promptTimingRate === null && promptTokens === null,
         decode_provisional: decodeIsProvisional,
+        peak_decode_provisional: decodeRateStats.peakProvisional,
+        mid_decode_provisional: decodeRateStats.midProvisional,
+        mean_decode_provisional: decodeRateStats.meanProvisional,
+        low_decode_provisional: decodeRateStats.lowProvisional,
         completion_provisional: completionTokens === null,
       });
     }
@@ -726,6 +831,10 @@
   function resetMetrics() {
     promptThroughputEl.textContent = "--";
     decodeSpeedEl.textContent = "--";
+    peakDecodeSpeedEl.textContent = "--";
+    midDecodeSpeedEl.textContent = "--";
+    meanDecodeSpeedEl.textContent = "--";
+    lowDecodeSpeedEl.textContent = "--";
     tokensEl.textContent = "--";
     wallTimeEl.textContent = "--";
   }
@@ -1511,6 +1620,12 @@
   });
 
   clearBtn.addEventListener("click", clearConversation);
+
+  decodeDetailsButton.addEventListener("click", () => {
+    const expanded = decodeDetailsButton.getAttribute("aria-expanded") === "true";
+    decodeDetailsButton.setAttribute("aria-expanded", String(!expanded));
+    decodeDetailsEl.hidden = expanded;
+  });
 
   languageButton.addEventListener("click", () => {
     languageMenu.hidden = !languageMenu.hidden;

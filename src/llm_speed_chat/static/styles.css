@@ -342,7 +342,7 @@ body{
 
 .stats{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(5,minmax(0,1fr));
   gap:12px;
   margin:14px 0;
 }
@@ -352,6 +352,74 @@ body{
   border:1px solid #d8dee8;
   border-radius:14px;
   padding:14px;
+}
+
+.decodeStatHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.decodeDetailsButton{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:#667085;
+  cursor:pointer;
+}
+
+.decodeDetailsButton:hover{
+  background:#eef2f6;
+}
+
+.decodeDetailsButton:focus-visible{
+  outline:2px solid #475467;
+  outline-offset:2px;
+}
+
+.chevronIcon{
+  width:7px;
+  height:7px;
+  border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;
+  transform:rotate(45deg) translateY(-2px);
+  transition:transform .16s ease;
+}
+
+.decodeDetailsButton[aria-expanded="true"] .chevronIcon{
+  transform:rotate(225deg) translate(-1px,-1px);
+}
+
+.decodeDetails{
+  display:grid;
+  gap:7px;
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid #e4e7ec;
+}
+
+.decodeDetails[hidden]{
+  display:none;
+}
+
+.decodeDetail{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.detailVal{
+  font-size:13px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
 }
 
 .label{
@@ -682,7 +750,8 @@ html[data-theme="dark"] .codeSaveButton:hover{
 html[data-theme="dark"] .languageButton:hover,
 html[data-theme="dark"] .themeButton:hover,
 html[data-theme="dark"] .languageMenu button:hover,
-html[data-theme="dark"] .languageMenu button.active{
+html[data-theme="dark"] .languageMenu button.active,
+html[data-theme="dark"] .decodeDetailsButton:hover{
   background:#242c37;
 }
 
@@ -705,6 +774,14 @@ html[data-theme="dark"] .previewDialog{
   border-color:#303a48;
   background:#171c23;
   box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+
+html[data-theme="dark"] .decodeDetails{
+  border-top-color:#303a48;
+}
+
+html[data-theme="dark"] .decodeDetailsButton{
+  color:#aeb8c7;
 }
 
 html[data-theme="dark"] .languageMenu button,
