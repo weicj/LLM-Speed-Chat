@@ -34,6 +34,7 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn('id="peakDecodeSpeed"', source)
         self.assertIn('id="lowDecodeSpeed"', source)
         self.assertIn('id="tokens"', source)
+        self.assertIn('id="ttft"', source)
         self.assertIn('id="wallTime"', source)
         self.assertNotIn('id="requestMeta"', source)
         self.assertIn('id="previewModal"', source)

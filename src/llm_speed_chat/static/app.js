@@ -48,6 +48,7 @@
   const decodeDetailsButton = el("decodeDetailsButton");
   const decodeDetailsEl = el("decodeDetails");
   const tokensEl = el("tokens");
+  const ttftEl = el("ttft");
   const wallTimeEl = el("wallTime");
   const attachBtn = el("attachBtn");
   const fileInput = el("fileInput");
@@ -109,6 +110,7 @@
       lowDecodeSpeed: "Low 1%",
       showDecodeDetails: "Show decode speed details",
       generatedTokens: "Generated Tokens",
+      ttft: "TTFT",
       wallTime: "Wall Time",
       chatBenchmark: "Chat Benchmark",
       prompt: "Prompt",
@@ -166,6 +168,7 @@
       lowDecodeSpeed: "最低 1% 瞬时速度",
       showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
+      ttft: "首 Token 延迟（TTFT）",
       wallTime: "总耗时",
       chatBenchmark: "对话测试",
       prompt: "输入内容",
@@ -505,6 +508,7 @@
     tokensEl.textContent = Number.isFinite(metrics.completion_tokens)
       ? `${metrics.completion_provisional ? "~" : ""}${Math.trunc(metrics.completion_tokens)}`
       : "--";
+    ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
   }
 
@@ -784,6 +788,7 @@
         mean_decode_tok_s: decodeRateStats.mean,
         low_decode_tok_s: decodeRateStats.low,
         completion_tokens: visibleCompletionTokens,
+        ttft_s: ttftSeconds,
         wall_s: wallSeconds,
         prompt_provisional: promptTimingRate === null && promptTokens === null,
         decode_provisional: decodeIsProvisional,
@@ -836,6 +841,7 @@
     meanDecodeSpeedEl.textContent = "--";
     lowDecodeSpeedEl.textContent = "--";
     tokensEl.textContent = "--";
+    ttftEl.textContent = "--";
     wallTimeEl.textContent = "--";
   }
 
