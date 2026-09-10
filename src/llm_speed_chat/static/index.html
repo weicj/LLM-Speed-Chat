@@ -99,16 +99,6 @@
               <span class="chevronIcon" aria-hidden="true"></span>
             </button>
           </div>
-          <div class="decodeDetails" id="decodeDetails" hidden>
-            <div class="decodeDetail"><span class="label" data-i18n="peakDecodeSpeed">Peak 95%</span><span class="detailVal" id="peakDecodeSpeed">--</span></div>
-            <div class="decodeDetail"><span class="label" data-i18n="midDecodeSpeed">Mid 50%</span><span class="detailVal" id="midDecodeSpeed">--</span></div>
-            <div class="decodeDetail"><span class="label" data-i18n="meanDecodeSpeed">Mean AVG</span><span class="detailVal" id="meanDecodeSpeed">--</span></div>
-            <div class="decodeDetail"><span class="label" data-i18n="lowDecodeSpeed">Low 5%</span><span class="detailVal" id="lowDecodeSpeed">--</span></div>
-            <div class="decodeChartWrap">
-              <span class="label" data-i18n="decodeTrend">Decode Speed Trend</span>
-              <canvas class="decodeChart" id="decodeChart" role="img" data-i18n-aria-label="decodeTrend" aria-label="Decode Speed Trend"></canvas>
-            </div>
-          </div>
         </article>
         <article class="stat">
           <p class="label" data-i18n="generatedTokens">Generated Tokens</p>
@@ -122,6 +112,32 @@
           <p class="label" data-i18n="wallTime">Wall Time</p>
           <p class="val" id="wallTime">--</p>
         </article>
+      </section>
+
+      <section class="decodeDetailsPanel" id="decodeDetails" hidden aria-labelledby="decodeDetailsTitle">
+        <div class="decodeDetailsPanelHeader">
+          <div>
+            <p class="decodeDetailsTitle" id="decodeDetailsTitle" data-i18n="decodeTrend">Decode Speed Trend</p>
+            <p class="decodeDetailsSubtitle" data-i18n="decodeTrendHint">Live samples from the current response</p>
+          </div>
+          <div class="decodeChartCurrent">
+            <span class="label" data-i18n="currentDecodeSpeed">Current</span>
+            <strong id="decodeChartCurrent">--</strong>
+          </div>
+        </div>
+        <div class="decodeChartFrame">
+          <div class="decodeAxisLabel decodeAxisMax" id="decodeChartMax">--</div>
+          <canvas class="decodeChart" id="decodeChart" role="img" data-i18n-aria-label="decodeTrend" aria-label="Decode Speed Trend"></canvas>
+          <div class="decodeChartEmpty" id="decodeChartEmpty" data-i18n="decodeChartEmpty">Waiting for decode samples...</div>
+          <div class="decodeAxisLabel decodeAxisMin" id="decodeChartMin">--</div>
+        </div>
+        <div class="decodeDetailsSummary">
+          <div class="decodeDetail"><span class="label" data-i18n="peakDecodeSpeed">Peak 95%</span><span class="detailVal" id="peakDecodeSpeed">--</span></div>
+          <div class="decodeDetail"><span class="label" data-i18n="midDecodeSpeed">Mid 50%</span><span class="detailVal" id="midDecodeSpeed">--</span></div>
+          <div class="decodeDetail"><span class="label" data-i18n="meanDecodeSpeed">Mean AVG</span><span class="detailVal" id="meanDecodeSpeed">--</span></div>
+          <div class="decodeDetail"><span class="label" data-i18n="lowDecodeSpeed">Low 5%</span><span class="detailVal" id="lowDecodeSpeed">--</span></div>
+          <div class="decodeDetail"><span class="label" data-i18n="decodeSamples">Samples</span><span class="detailVal" id="decodeSampleCount">0</span></div>
+        </div>
       </section>
 
       <section class="panel chatShell" data-i18n-aria-label="chatBenchmark" aria-label="Chat Benchmark">

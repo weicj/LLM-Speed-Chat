@@ -400,15 +400,96 @@ body{
 }
 
 .decodeDetails{
-  display:grid;
-  gap:7px;
-  margin-top:12px;
-  padding-top:10px;
-  border-top:1px solid #e4e7ec;
+  display:block;
 }
 
 .decodeDetails[hidden]{
   display:none;
+}
+
+.decodeDetailsPanel{
+  margin:0 0 14px;
+  padding:16px;
+  border:1px solid #d8dee8;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(15,23,42,.04);
+}
+
+.decodeDetailsPanel[hidden]{
+  display:none;
+}
+
+.decodeDetailsPanelHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.decodeDetailsTitle{
+  margin:0;
+  font-size:14px;
+  font-weight:750;
+}
+
+.decodeDetailsSubtitle{
+  margin:4px 0 0;
+  color:#667085;
+  font-size:12px;
+}
+
+.decodeChartCurrent{
+  display:grid;
+  justify-items:end;
+  gap:2px;
+}
+
+.decodeChartCurrent strong{
+  font-size:18px;
+  font-variant-numeric:tabular-nums;
+}
+
+.decodeChartFrame{
+  position:relative;
+  height:150px;
+  margin-top:14px;
+  padding:0 44px 0 0;
+  box-sizing:border-box;
+}
+
+.decodeAxisLabel{
+  position:absolute;
+  right:0;
+  color:#667085;
+  font-size:10px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+.decodeAxisMax{top:0}
+.decodeAxisMin{bottom:0}
+
+.decodeChartEmpty{
+  position:absolute;
+  inset:0 44px 0 0;
+  display:grid;
+  place-items:center;
+  color:#667085;
+  font-size:12px;
+}
+
+.decodeChartEmpty[hidden]{
+  display:none;
+}
+
+.decodeDetailsSummary{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #e4e7ec;
 }
 
 .decodeDetail{
@@ -418,15 +499,9 @@ body{
   gap:12px;
 }
 
-.decodeChartWrap{
-  display:grid;
-  gap:6px;
-  margin-top:3px;
-}
-
 .decodeChart{
   width:100%;
-  height:84px;
+  height:150px;
   display:block;
 }
 
@@ -809,6 +884,22 @@ html[data-theme="dark"] .decodeDetails{
   border-top-color:#303a48;
 }
 
+html[data-theme="dark"] .decodeDetailsPanel{
+  border-color:#303a48;
+  background:#171c23;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+
+html[data-theme="dark"] .decodeDetailsSubtitle,
+html[data-theme="dark"] .decodeAxisLabel,
+html[data-theme="dark"] .decodeChartEmpty{
+  color:#aeb8c7;
+}
+
+html[data-theme="dark"] .decodeDetailsSummary{
+  border-top-color:#303a48;
+}
+
 html[data-theme="dark"] .decodeDetailsButton{
   color:#aeb8c7;
 }
@@ -995,6 +1086,19 @@ html[data-theme="dark"] .btn:disabled{
   }
 
   .stats{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .decodeDetailsPanelHeader{
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .decodeChartCurrent{
+    justify-items:start;
+  }
+
+  .decodeDetailsSummary{
     grid-template-columns:1fr 1fr;
   }
 

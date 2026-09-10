@@ -48,6 +48,11 @@
   const decodeDetailsButton = el("decodeDetailsButton");
   const decodeDetailsEl = el("decodeDetails");
   const decodeChart = el("decodeChart");
+  const decodeChartCurrentEl = el("decodeChartCurrent");
+  const decodeChartMaxEl = el("decodeChartMax");
+  const decodeChartMinEl = el("decodeChartMin");
+  const decodeSampleCountEl = el("decodeSampleCount");
+  const decodeChartEmptyEl = el("decodeChartEmpty");
   const tokensEl = el("tokens");
   const ttftEl = el("ttft");
   const wallTimeEl = el("wallTime");
@@ -119,6 +124,10 @@
       meanDecodeSpeed: "Mean AVG",
       lowDecodeSpeed: "Low 5%",
       decodeTrend: "Decode Speed Trend",
+      decodeTrendHint: "Live samples from the current response",
+      currentDecodeSpeed: "Current",
+      decodeSamples: "Samples",
+      decodeChartEmpty: "Waiting for decode samples...",
       showDecodeDetails: "Show decode speed details",
       generatedTokens: "Generated Tokens",
       ttft: "Time to First Token",
@@ -187,6 +196,10 @@
       meanDecodeSpeed: "平均值 AVG",
       lowDecodeSpeed: "最低 5%",
       decodeTrend: "解码速度趋势",
+      decodeTrendHint: "当前响应的实时采样",
+      currentDecodeSpeed: "当前",
+      decodeSamples: "采样数",
+      decodeChartEmpty: "等待解码采样...",
       showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
@@ -545,6 +558,9 @@
     ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
     latestDecodeSamples = Array.isArray(metrics.decode_samples) ? metrics.decode_samples : [];
+    decodeChartCurrentEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
+    decodeSampleCountEl.textContent = String(latestDecodeSamples.length);
+    decodeChartEmptyEl.hidden = latestDecodeSamples.length > 0;
     drawDecodeChart();
   }
 
@@ -575,6 +591,8 @@
     const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1);
     const lower = Math.max(0, minimum - padding);
     const upper = maximum + padding;
+    decodeChartMaxEl.textContent = formatRate(upper);
+    decodeChartMinEl.textContent = formatRate(lower);
     const plotLeft = 2;
     const plotRight = width - 2;
     const plotTop = 5;
@@ -958,6 +976,11 @@
     meanDecodeSpeedEl.textContent = "--";
     lowDecodeSpeedEl.textContent = "--";
     latestDecodeSamples = [];
+    decodeChartCurrentEl.textContent = "--";
+    decodeChartMaxEl.textContent = "--";
+    decodeChartMinEl.textContent = "--";
+    decodeSampleCountEl.textContent = "0";
+    decodeChartEmptyEl.hidden = false;
     drawDecodeChart();
     tokensEl.textContent = "--";
     ttftEl.textContent = "--";

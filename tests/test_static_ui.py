@@ -32,6 +32,7 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn('id="promptThroughput"', source)
         self.assertIn('id="decodeSpeed"', source)
         self.assertIn('id="decodeChart"', source)
+        self.assertIn('id="decodeChartEmpty"', source)
         self.assertIn('id="peakDecodeSpeed"', source)
         self.assertIn('id="lowDecodeSpeed"', source)
         self.assertIn('id="tokens"', source)
