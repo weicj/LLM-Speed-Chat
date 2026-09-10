@@ -254,7 +254,7 @@ test("uses ExLlama endpoint capabilities even with the Universal metrics overrid
   await expect(page.locator("#model")).toHaveValue("local-exllama-model");
   await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (ExLlama)");
   await page.locator("#metricBackend").selectOption("universal");
-  await page.locator("#thinkingEnabled").check();
+  await page.locator("#reasoningEffort").selectOption("auto");
   await page.locator("#prompt").fill("exl3-live-metrics");
   await page.locator("#sendBtn").click();
 
@@ -349,7 +349,7 @@ test("switches the interface between English and Chinese without exposing the mo
   await page.locator("#languageMenu [data-language='zh']").click();
   await expect(page.locator("#intro")).toContainText("连接任意");
   await expect(page.locator("#sendBtn")).toHaveText("发送");
-  await expect(page.locator("#thinkingBudget")).toHaveAttribute("title", "输入 0 表示无限思考");
+  await expect(page.locator("#thinkingBudget")).toHaveAttribute("title", "输入 0 表示无限推理");
 
   await page.locator("#languageButton").click();
   await page.locator("#languageMenu [data-language='en']").click();
@@ -358,7 +358,7 @@ test("switches the interface between English and Chinese without exposing the mo
 });
 
 test("uses an unlimited thinking budget when enabled with zero", async ({ page }) => {
-  await page.locator("#thinkingEnabled").check();
+  await page.locator("#reasoningEffort").selectOption("auto");
   await page.locator("#thinkingBudget").fill("0");
   await page.locator("#prompt").fill("thinking-unlimited");
   await page.locator("#sendBtn").click();
@@ -367,8 +367,8 @@ test("uses an unlimited thinking budget when enabled with zero", async ({ page }
   await expect(page.locator(".msg.assistant").last()).toContainText("template thinking: true");
 });
 
-test("explicitly disables template thinking when reasoning is unchecked", async ({ page }) => {
-  await expect(page.locator("#thinkingEnabled")).not.toBeChecked();
+test("explicitly disables template thinking when reasoning effort is off", async ({ page }) => {
+  await expect(page.locator("#reasoningEffort")).toHaveValue("off");
   await page.locator("#prompt").fill("thinking-disabled");
   await page.locator("#sendBtn").click();
 
@@ -376,7 +376,7 @@ test("explicitly disables template thinking when reasoning is unchecked", async 
 });
 
 test("keeps streamed reasoning in its own five-line scrolling bubble", async ({ page }) => {
-  await page.locator("#thinkingEnabled").check();
+  await page.locator("#reasoningEffort").selectOption("auto");
   await page.locator("#prompt").fill("thinking-message");
   await page.locator("#sendBtn").click();
 
@@ -394,12 +394,13 @@ test("renders vLLM reasoning stream fields in the thinking panel", async ({ page
   await page.locator("#apiKey").fill("local-vllm");
   await page.locator("#connectBtn").click();
   await expect(page.locator("#model")).toHaveValue("local-vllm-model");
-  await page.locator("#thinkingEnabled").check();
+  await page.locator("#reasoningEffort").selectOption("high");
   await page.locator("#prompt").fill("vllm-reasoning-message");
   await page.locator("#sendBtn").click();
 
   const payload = JSON.parse((await requestPromise).postData() || "{}");
   expect(payload.chat_template_kwargs).toEqual({enable_thinking: true});
+  expect(payload.reasoning_effort).toBe("high");
   await expect(page.locator(".reasoningContent").last()).toHaveText("vLLM thought one. vLLM thought two.");
   await expect(page.locator(".msg.assistant").last().locator(".messageBody")).toHaveText("Answer after vLLM thinking.");
   await expect(page.locator(".msg.assistant").last()).not.toContainText("vLLM thought one");

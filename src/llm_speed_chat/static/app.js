@@ -34,7 +34,7 @@
   const modelOptionsEl = el("modelOptions");
   const maxTokensEl = el("maxTokens");
   const tempEl = el("temp");
-  const thinkingEnabledEl = el("thinkingEnabled");
+  const reasoningEffortEl = el("reasoningEffort");
   const thinkingBudgetEl = el("thinkingBudget");
   const metricBackendEl = el("metricBackend");
   const connectBtn = el("connectBtn");
@@ -70,6 +70,7 @@
   const languageStorageKey = "llm-speed-chat.language";
   const themeStorageKey = "llm-speed-chat.theme";
   const metricBackendStorageKey = "llm-speed-chat.metric-backend";
+  const reasoningEffortStorageKey = "llm-speed-chat.reasoning-effort";
   const autoModelLoadDelayMs = 400;
   const chatScrollThreshold = 24;
 
@@ -93,10 +94,15 @@
       advancedSettings: "Advanced Generation Settings",
       maxTokens: "Max Tokens",
       temperature: "Temperature",
-      thinking: "Thinking",
-      enableReasoning: "Enable reasoning",
-      thinkingBudget: "Thinking Budget",
-      thinkingBudgetTitle: "0 means unlimited thinking",
+      reasoningEffort: "Reasoning Effort",
+      reasoningEffortOff: "Off",
+      reasoningEffortAuto: "Auto",
+      reasoningEffortLow: "Low",
+      reasoningEffortMedium: "Medium",
+      reasoningEffortHigh: "High",
+      reasoningEffortXHigh: "XHigh",
+      thinkingBudget: "Reasoning Budget",
+      thinkingBudgetTitle: "0 means unlimited reasoning",
       framework: "Framework",
       frameworkTitle: "Detected from the model list. Select a framework to override.",
       frameworkAuto: "Auto-detected",
@@ -151,10 +157,15 @@
       advancedSettings: "高级生成设置",
       maxTokens: "最大 Token 数",
       temperature: "温度",
-      thinking: "思考",
-      enableReasoning: "启用思考",
-      thinkingBudget: "思考预算",
-      thinkingBudgetTitle: "输入 0 表示无限思考",
+      reasoningEffort: "推理强度",
+      reasoningEffortOff: "关闭",
+      reasoningEffortAuto: "自动",
+      reasoningEffortLow: "低",
+      reasoningEffortMedium: "中",
+      reasoningEffortHigh: "高",
+      reasoningEffortXHigh: "极高",
+      thinkingBudget: "推理预算",
+      thinkingBudgetTitle: "输入 0 表示无限推理",
       framework: "推理框架",
       frameworkTitle: "从模型列表中检测；可手动覆盖。",
       frameworkAuto: "自动检测",
@@ -210,7 +221,8 @@
   maxTokensEl.value = String(CONFIG.defaultMaxTokens);
   tempEl.value = String(CONFIG.defaultTemperature);
   thinkingBudgetEl.value = String(CONFIG.defaultThinkingBudget || 0);
-  thinkingEnabledEl.checked = Number(CONFIG.defaultThinkingBudget) > 0;
+  reasoningEffortEl.value = storage.getItem(reasoningEffortStorageKey)
+    || (Number(CONFIG.defaultThinkingBudget) > 0 ? "auto" : "off");
   metricBackendEl.value = storage.getItem(metricBackendStorageKey) || "auto";
   if (metricBackendEl.value === "standard") metricBackendEl.value = "universal";
   if (!new Set(["auto", "universal", "llamacpp", "vllm", "sglang", "exllama"]).has(metricBackendEl.value)) {
@@ -385,9 +397,13 @@
   }
 
   function thinkingBudgetTokens() {
-    if (!thinkingEnabledEl.checked) return 0;
+    if (reasoningEffortEl.value === "off") return 0;
     const budget = Math.max(0, Math.trunc(Number(thinkingBudgetEl.value) || 0));
     return budget === 0 ? -1 : budget;
+  }
+
+  function reasoningEnabled() {
+    return reasoningEffortEl.value !== "off";
   }
 
   function persistConnectionState() {
@@ -1227,10 +1243,13 @@
 
     // ExLlama's OpenAI-compatible server reads this template switch at top level.
     if (isExLlamaEndpoint) {
-      payload.enable_thinking = thinkingEnabledEl.checked;
+      payload.enable_thinking = reasoningEnabled();
     } else {
       // The budget stops an existing thought; this controls whether the template starts one.
-      payload.chat_template_kwargs = {enable_thinking: thinkingEnabledEl.checked};
+      payload.chat_template_kwargs = {enable_thinking: reasoningEnabled()};
+    }
+    if (reasoningEffortEl.value !== "off" && reasoningEffortEl.value !== "auto") {
+      payload.reasoning_effort = reasoningEffortEl.value;
     }
 
     if (framework === "sglang") {
@@ -1276,8 +1295,8 @@
     modelEl.disabled = isRunning;
     maxTokensEl.disabled = isRunning;
     tempEl.disabled = isRunning;
-    thinkingEnabledEl.disabled = isRunning;
-    thinkingBudgetEl.disabled = isRunning || !thinkingEnabledEl.checked;
+    reasoningEffortEl.disabled = isRunning;
+    thinkingBudgetEl.disabled = isRunning || !reasoningEnabled();
     metricBackendEl.disabled = isRunning;
   }
 
@@ -1691,7 +1710,8 @@
 
   maxTokensEl.addEventListener("input", renderRequestSizeHint);
   tempEl.addEventListener("input", renderRequestSizeHint);
-  thinkingEnabledEl.addEventListener("change", () => {
+  reasoningEffortEl.addEventListener("change", () => {
+    storage.setItem(reasoningEffortStorageKey, reasoningEffortEl.value);
     renderRequestSizeHint();
     renderControlState();
   });

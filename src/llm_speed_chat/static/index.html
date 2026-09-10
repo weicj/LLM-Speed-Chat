@@ -55,16 +55,20 @@
             <span class="fieldLabel" data-i18n="temperature">Temperature</span>
             <input id="temp" type="number" min="0" step="0.1">
           </label>
-          <label class="field thinkingToggle" for="thinkingEnabled">
-            <span class="fieldLabel" data-i18n="thinking">Thinking</span>
-            <span class="toggleControl">
-              <input id="thinkingEnabled" type="checkbox">
-              <span data-i18n="enableReasoning">Enable reasoning</span>
-            </span>
+          <label class="field" for="reasoningEffort">
+            <span class="fieldLabel" data-i18n="reasoningEffort">Reasoning Effort</span>
+            <select id="reasoningEffort">
+              <option value="off" data-i18n="reasoningEffortOff">Off</option>
+              <option value="auto" data-i18n="reasoningEffortAuto">Auto</option>
+              <option value="low" data-i18n="reasoningEffortLow">Low</option>
+              <option value="medium" data-i18n="reasoningEffortMedium">Medium</option>
+              <option value="high" data-i18n="reasoningEffortHigh">High</option>
+              <option value="xhigh" data-i18n="reasoningEffortXHigh">XHigh</option>
+            </select>
           </label>
           <label class="field" for="thinkingBudget">
-            <span class="fieldLabel" data-i18n="thinkingBudget">Thinking Budget</span>
-            <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited thinking">
+            <span class="fieldLabel" data-i18n="thinkingBudget">Reasoning Budget</span>
+            <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited reasoning">
           </label>
           <label class="field" for="metricBackend">
             <span class="fieldLabel" data-i18n="framework">Framework</span>
