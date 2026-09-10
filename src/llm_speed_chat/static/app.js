@@ -113,10 +113,10 @@
       benchmarkMetrics: "Benchmark Metrics",
       promptThroughput: "Prompt Throughput",
       decodeSpeed: "Decode Speed",
-      peakDecodeSpeed: "Peak 99%",
+      peakDecodeSpeed: "Peak 95%",
       midDecodeSpeed: "Mid 50%",
       meanDecodeSpeed: "Mean AVG",
-      lowDecodeSpeed: "Low 1%",
+      lowDecodeSpeed: "Low 5%",
       showDecodeDetails: "Show decode speed details",
       generatedTokens: "Generated Tokens",
       ttft: "Time to First Token",
@@ -180,10 +180,10 @@
       benchmarkMetrics: "性能指标",
       promptThroughput: "提示吞吐",
       decodeSpeed: "解码速度",
-      peakDecodeSpeed: "最高 99%",
+      peakDecodeSpeed: "最高 95%",
       midDecodeSpeed: "中位 50%",
       meanDecodeSpeed: "平均值 AVG",
-      lowDecodeSpeed: "最低 1% 瞬时速度",
+      lowDecodeSpeed: "最低 5% 瞬时速度",
       showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
@@ -672,9 +672,9 @@
           provisional: lower.provisional || upper.provisional,
         };
       };
-      const peak = percentile(0.99);
+      const peak = percentile(0.95);
       const mid = percentile(0.5);
-      const low = percentile(0.01);
+      const low = percentile(0.05);
       return {
         peak: peak.value,
         mid: mid.value,
