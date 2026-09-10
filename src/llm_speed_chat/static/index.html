@@ -156,7 +156,13 @@
             <div class="previewDialogTitle" id="previewTitle" data-i18n="htmlPreview">HTML Preview</div>
             <div class="previewDialogMeta" data-i18n="htmlPreviewMeta">Runs in an isolated iframe. Network, storage, forms, navigation, and popups are blocked.</div>
           </div>
-          <button class="btn secondary" id="closePreviewBtn" type="button" data-i18n="close">Close</button>
+          <div class="previewDialogActions">
+            <div class="previewModeControl" role="group" data-i18n-aria-label="previewMode" aria-label="Preview mode">
+              <button class="previewModeButton active" id="standardPreviewBtn" type="button" aria-pressed="true" data-i18n="standardPreview">Standard</button>
+              <button class="previewModeButton" id="interactivePreviewBtn" type="button" aria-pressed="false" data-i18n="interactivePreview">Interactive</button>
+            </div>
+            <button class="btn secondary" id="closePreviewBtn" type="button" data-i18n="close">Close</button>
+          </div>
         </div>
         <iframe class="previewFrame" id="previewFrame" title="HTML preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
       </div>

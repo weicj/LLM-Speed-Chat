@@ -663,7 +663,7 @@ body{
 .attachmentChip{display:flex;align-items:center;gap:8px;max-width:260px;padding:7px 9px;border:1px solid #d8dee8;border-radius:8px;background:#f8fafc;font-size:12px;overflow:hidden}
 .attachmentChip img{width:30px;height:30px;object-fit:cover;border-radius:4px}.attachmentChip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachmentChip button{border:0;background:transparent;font-size:16px;cursor:pointer}
 .fileBtn{display:inline-flex;align-items:center;justify-content:center}.fileBtn input{display:none}.fileBtn.disabled{opacity:.55;pointer-events:none}
-.previewModal[hidden]{display:none!important}.previewModal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.55)}.previewDialog{width:min(1050px,100%);height:min(760px,100%);display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden}.previewDialogHead{display:flex;justify-content:space-between;gap:16px;padding:14px;border-bottom:1px solid #d8dee8}.previewDialogTitle{font-weight:750}.previewDialogMeta{margin-top:4px;color:#667085;font-size:12px}.previewFrame{width:100%;height:100%;border:0}
+.previewModal[hidden]{display:none!important}.previewModal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.55)}.previewDialog{width:min(1050px,100%);height:min(760px,100%);display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden}.previewDialogHead{display:flex;justify-content:space-between;gap:16px;padding:14px;border-bottom:1px solid #d8dee8}.previewDialogTitle{font-weight:750}.previewDialogMeta{margin-top:4px;color:#667085;font-size:12px}.previewDialogActions{display:flex;align-items:center;gap:8px}.previewModeControl{display:flex;padding:2px;border:1px solid #cfd7e3;border-radius:6px;background:#f8fafc}.previewModeButton{border:0;border-radius:4px;background:transparent;padding:5px 8px;color:#475467;font-size:12px;line-height:1.2;cursor:pointer}.previewModeButton.active{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(15,23,42,.12)}.previewModeButton:focus-visible{outline:2px solid #475467;outline-offset:1px}.previewFrame{width:100%;height:100%;border:0}
 
 .composerField{
   margin:0;
@@ -777,6 +777,20 @@ html[data-theme="dark"] .previewDialog{
   border-color:#303a48;
   background:#171c23;
   box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+
+html[data-theme="dark"] .previewModeControl{
+  border-color:#3a4655;
+  background:#11161d;
+}
+
+html[data-theme="dark"] .previewModeButton{
+  color:#aeb8c7;
+}
+
+html[data-theme="dark"] .previewModeButton.active{
+  background:#303a48;
+  color:#f3f4f6;
 }
 
 html[data-theme="dark"] .decodeDetails{

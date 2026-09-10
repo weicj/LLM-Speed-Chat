@@ -116,6 +116,10 @@ test("GitHub Pages build connects directly to a user endpoint", async ({ browser
 
   await htmlReply.getByRole("button", {name: "Preview"}).click();
   await expect(page.locator("#previewModal")).toBeVisible();
+  await expect(page.locator("#previewFrame")).toHaveAttribute("sandbox", "allow-scripts");
+  await expect(page.frameLocator("#previewFrame").locator("#online-preview")).toHaveText("Online preview");
+  await page.locator("#interactivePreviewBtn").click();
+  await expect(page.locator("#previewFrame")).toHaveAttribute("sandbox", "allow-scripts allow-forms allow-modals allow-popups");
   await expect(page.frameLocator("#previewFrame").locator("#online-preview")).toHaveText("Online preview");
   await page.locator("#closePreviewBtn").click();
   await expect(page.locator("#previewModal")).toBeHidden();

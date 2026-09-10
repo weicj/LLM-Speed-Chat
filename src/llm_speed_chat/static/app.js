@@ -55,6 +55,9 @@
   const attachmentsEl = el("attachments");
   const previewModal = el("previewModal");
   const previewFrame = el("previewFrame");
+  const previewMetaEl = document.querySelector(".previewDialogMeta");
+  const standardPreviewBtn = el("standardPreviewBtn");
+  const interactivePreviewBtn = el("interactivePreviewBtn");
   const closePreviewBtn = el("closePreviewBtn");
   const languageButton = el("languageButton");
   const languageMenu = el("languageMenu");
@@ -128,6 +131,10 @@
       clear: "Clear",
       htmlPreview: "HTML Preview",
       htmlPreviewMeta: "Runs in an isolated iframe. Network, storage, forms, navigation, and popups are blocked.",
+      interactivePreviewMeta: "Allows external assets, API requests, forms, dialogs, and popups in an isolated iframe. Storage remains blocked.",
+      previewMode: "Preview mode",
+      standardPreview: "Standard",
+      interactivePreview: "Interactive",
       close: "Close",
       emptyState: "Start a multi-turn conversation to measure LLM serving speed.",
       thinkingLabel: "Thinking",
@@ -191,6 +198,10 @@
       clear: "清空",
       htmlPreview: "HTML 预览",
       htmlPreviewMeta: "在隔离 iframe 中运行，网络、存储、表单、跳转和弹窗均被阻止。",
+      interactivePreviewMeta: "在隔离 iframe 中允许外部资源、API 请求、表单、对话框和弹窗；存储仍被阻止。",
+      previewMode: "预览模式",
+      standardPreview: "标准",
+      interactivePreview: "交互",
       close: "关闭",
       emptyState: "开始多轮对话，测试 LLM 服务速度。",
       thinkingLabel: "思考",
@@ -214,6 +225,8 @@
   let modelLoadVersion = 0;
   let modelMetadataById = new Map();
   let detectedFramework = "universal";
+  let previewMarkup = "";
+  let previewMode = "standard";
 
   apiBaseUrlEl.value = storage.getItem(upstreamStorageKey) || CONFIG.upstream_base_url || "";
   apiKeyEl.value = session.getItem(apiKeyStorageKey) || "";
@@ -372,6 +385,7 @@
     for (const label of document.querySelectorAll(".reasoningLabel")) {
       label.textContent = t("thinkingLabel");
     }
+    updatePreviewModeUI();
     const emptyState = chatEl.querySelector(".emptyState");
     if (emptyState) emptyState.textContent = t("emptyState");
     for (const option of languageMenu.querySelectorAll("[data-language]")) {
@@ -1161,9 +1175,42 @@
     return message;
   }
 
+  function previewPolicy() {
+    if (previewMode === "interactive") {
+      return "default-src 'none'; img-src data: blob: http: https:; style-src 'unsafe-inline' http: https:; script-src 'unsafe-inline' http: https:; connect-src http: https:; font-src data: http: https:; media-src data: blob: http: https:; frame-src http: https:; form-action http: https:; base-uri 'none';";
+    }
+    return "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none';";
+  }
+
+  function renderPreview() {
+    const sandbox = previewMode === "interactive"
+      ? "allow-scripts allow-forms allow-modals allow-popups"
+      : "allow-scripts";
+    previewFrame.setAttribute("sandbox", sandbox);
+    previewFrame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="${previewPolicy()}">${previewMarkup}`;
+  }
+
+  function updatePreviewModeUI() {
+    if (!previewMetaEl) return;
+    const isInteractive = previewMode === "interactive";
+    previewMetaEl.textContent = t(isInteractive ? "interactivePreviewMeta" : "htmlPreviewMeta");
+    standardPreviewBtn.classList.toggle("active", !isInteractive);
+    standardPreviewBtn.setAttribute("aria-pressed", String(!isInteractive));
+    interactivePreviewBtn.classList.toggle("active", isInteractive);
+    interactivePreviewBtn.setAttribute("aria-pressed", String(isInteractive));
+  }
+
+  function setPreviewMode(mode) {
+    previewMode = mode === "interactive" ? "interactive" : "standard";
+    updatePreviewModeUI();
+    if (!previewModal.hidden) renderPreview();
+  }
+
   function openPreview(markup) {
-    const policy = "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none';";
-    previewFrame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="${policy}">${markup}`;
+    previewMarkup = markup;
+    previewMode = "standard";
+    updatePreviewModeUI();
+    renderPreview();
     previewModal.hidden = false;
     closePreviewBtn.focus();
   }
@@ -1171,6 +1218,7 @@
   function closePreview() {
     previewModal.hidden = true;
     previewFrame.srcdoc = "";
+    previewMarkup = "";
   }
 
   function renderAttachments() {
@@ -1666,6 +1714,8 @@
 
   fileInput.addEventListener("change", async () => { try { await addFiles(Array.from(fileInput.files || [])); } catch (err) { appendMessage("assistant", `ERROR: ${err.message || err}`, "err"); } });
   closePreviewBtn.addEventListener("click", closePreview);
+  standardPreviewBtn.addEventListener("click", () => setPreviewMode("standard"));
+  interactivePreviewBtn.addEventListener("click", () => setPreviewMode("interactive"));
   previewModal.addEventListener("click", (event) => { if (event.target === previewModal) closePreview(); });
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
