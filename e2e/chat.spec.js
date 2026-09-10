@@ -71,6 +71,9 @@ test("loads models and streams a chat response with live metrics", async ({ page
   await expect(page.locator("#decodeSpeed")).toContainText("tok/s");
   await expect(page.locator("#peakDecodeSpeed")).toContainText("tok/s");
   await expect(page.locator("#lowDecodeSpeed")).toContainText("tok/s");
+  await page.locator("#decodeDetailsButton").click();
+  await expect(page.locator("#decodeChart")).toBeVisible();
+  expect(await page.locator("#decodeChart").evaluate((canvas) => canvas.width > 0 && canvas.height > 0)).toBe(true);
   await expect(page.locator("#tokens")).toHaveText("5");
   await expect(page.locator("#wallTime")).toContainText("s");
 });

@@ -47,6 +47,7 @@
   const lowDecodeSpeedEl = el("lowDecodeSpeed");
   const decodeDetailsButton = el("decodeDetailsButton");
   const decodeDetailsEl = el("decodeDetails");
+  const decodeChart = el("decodeChart");
   const tokensEl = el("tokens");
   const ttftEl = el("ttft");
   const wallTimeEl = el("wallTime");
@@ -117,6 +118,7 @@
       midDecodeSpeed: "Mid 50%",
       meanDecodeSpeed: "Mean AVG",
       lowDecodeSpeed: "Low 5%",
+      decodeTrend: "Decode Speed Trend",
       showDecodeDetails: "Show decode speed details",
       generatedTokens: "Generated Tokens",
       ttft: "Time to First Token",
@@ -184,6 +186,7 @@
       midDecodeSpeed: "中位 50%",
       meanDecodeSpeed: "平均值 AVG",
       lowDecodeSpeed: "最低 5%",
+      decodeTrend: "解码速度趋势",
       showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
@@ -227,6 +230,7 @@
   let detectedFramework = "universal";
   let previewMarkup = "";
   let previewMode = "standard";
+  let latestDecodeSamples = [];
 
   apiBaseUrlEl.value = storage.getItem(upstreamStorageKey) || CONFIG.upstream_base_url || "";
   apiKeyEl.value = session.getItem(apiKeyStorageKey) || "";
@@ -540,6 +544,88 @@
       : "--";
     ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
+    latestDecodeSamples = Array.isArray(metrics.decode_samples) ? metrics.decode_samples : [];
+    drawDecodeChart();
+  }
+
+  function drawDecodeChart() {
+    if (decodeDetailsEl.hidden) return;
+    const context = decodeChart.getContext("2d");
+    const width = decodeChart.clientWidth;
+    const height = decodeChart.clientHeight;
+    if (!context || width < 1 || height < 1) return;
+
+    const pixelRatio = window.devicePixelRatio || 1;
+    const pixelWidth = Math.round(width * pixelRatio);
+    const pixelHeight = Math.round(height * pixelRatio);
+    if (decodeChart.width !== pixelWidth || decodeChart.height !== pixelHeight) {
+      decodeChart.width = pixelWidth;
+      decodeChart.height = pixelHeight;
+    }
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
+    const samples = latestDecodeSamples.slice(-60);
+    if (!samples.length) return;
+    const rates = samples.map((sample) => sample.rate).filter((rate) => Number.isFinite(rate) && rate > 0);
+    if (!rates.length) return;
+
+    const minimum = Math.min(...rates);
+    const maximum = Math.max(...rates);
+    const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1);
+    const lower = Math.max(0, minimum - padding);
+    const upper = maximum + padding;
+    const plotLeft = 2;
+    const plotRight = width - 2;
+    const plotTop = 5;
+    const plotBottom = height - 5;
+    const plotHeight = plotBottom - plotTop;
+    const plotWidth = plotRight - plotLeft;
+    const isDark = document.documentElement.dataset.theme === "dark";
+
+    context.strokeStyle = isDark ? "#303a48" : "#e4e7ec";
+    context.lineWidth = 1;
+    for (let row = 1; row < 4; row += 1) {
+      const y = plotTop + plotHeight * row / 4;
+      context.beginPath();
+      context.moveTo(plotLeft, y);
+      context.lineTo(plotRight, y);
+      context.stroke();
+    }
+
+    const pointAt = (sample, index) => ({
+      x: samples.length === 1 ? plotLeft + plotWidth / 2 : plotLeft + plotWidth * index / (samples.length - 1),
+      y: plotBottom - (sample.rate - lower) / (upper - lower) * plotHeight,
+    });
+    const firstPoint = pointAt(samples[0], 0);
+    context.beginPath();
+    context.moveTo(firstPoint.x, plotBottom);
+    samples.forEach((sample, index) => {
+      const point = pointAt(sample, index);
+      context.lineTo(point.x, point.y);
+    });
+    context.lineTo(plotRight, plotBottom);
+    context.closePath();
+    context.fillStyle = isDark ? "rgba(96,165,250,.18)" : "rgba(37,99,235,.12)";
+    context.fill();
+
+    context.beginPath();
+    samples.forEach((sample, index) => {
+      const point = pointAt(sample, index);
+      if (index === 0) context.moveTo(point.x, point.y);
+      else context.lineTo(point.x, point.y);
+    });
+    context.strokeStyle = isDark ? "#60a5fa" : "#2563eb";
+    context.lineWidth = 1.75;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.stroke();
+
+    const finalPoint = pointAt(samples.at(-1), samples.length - 1);
+    context.beginPath();
+    context.arc(finalPoint.x, finalPoint.y, 3, 0, Math.PI * 2);
+    context.fillStyle = isDark ? "#bfdbfe" : "#1d4ed8";
+    context.fill();
   }
 
   function readTokenCount(value) {
@@ -826,6 +912,7 @@
         mid_decode_provisional: decodeRateStats.midProvisional,
         mean_decode_provisional: decodeRateStats.meanProvisional,
         low_decode_provisional: decodeRateStats.lowProvisional,
+        decode_samples: decodeRateSamples,
         completion_provisional: completionTokens === null,
       });
     }
@@ -870,6 +957,8 @@
     midDecodeSpeedEl.textContent = "--";
     meanDecodeSpeedEl.textContent = "--";
     lowDecodeSpeedEl.textContent = "--";
+    latestDecodeSamples = [];
+    drawDecodeChart();
     tokensEl.textContent = "--";
     ttftEl.textContent = "--";
     wallTimeEl.textContent = "--";
@@ -1698,7 +1787,10 @@
     const expanded = decodeDetailsButton.getAttribute("aria-expanded") === "true";
     decodeDetailsButton.setAttribute("aria-expanded", String(!expanded));
     decodeDetailsEl.hidden = expanded;
+    if (!expanded) drawDecodeChart();
   });
+
+  window.addEventListener("resize", drawDecodeChart);
 
   languageButton.addEventListener("click", () => {
     languageMenu.hidden = !languageMenu.hidden;
