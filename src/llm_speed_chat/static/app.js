@@ -183,7 +183,7 @@
       peakDecodeSpeed: "最高 95%",
       midDecodeSpeed: "中位 50%",
       meanDecodeSpeed: "平均值 AVG",
-      lowDecodeSpeed: "最低 5% 瞬时速度",
+      lowDecodeSpeed: "最低 5%",
       showDecodeDetails: "显示解码速度详情",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
