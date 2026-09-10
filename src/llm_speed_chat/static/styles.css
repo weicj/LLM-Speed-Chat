@@ -354,19 +354,22 @@ body{
   padding:14px;
 }
 
+.decodeStat{
+  position:relative;
+}
+
 .decodeStatHeader{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:8px;
+  padding-right:34px;
 }
 
 .decodeDetailsButton{
+  position:absolute;
+  top:14px;
+  right:10px;
   width:28px;
   height:28px;
   display:grid;
   place-items:center;
-  flex:0 0 auto;
   border:0;
   border-radius:6px;
   background:transparent;
