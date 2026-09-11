@@ -239,9 +239,23 @@ const server = http.createServer((req, res) => {
             },
           },
           {
+            delayMs: 0,
+            data: {
+              choices: [{delta: {content: "still "}}],
+              timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 3, predicted_ms: 50, predicted_per_second: 40},
+            },
+          },
+          {
+            delayMs: 0,
+            data: {
+              choices: [{delta: {content: "same "}}],
+              timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 4, predicted_ms: 50, predicted_per_second: 60},
+            },
+          },
+          {
             delayMs: 100,
             data: {
-              choices: [{delta: {content: "works."}}],
+              choices: [{delta: {content: "batch."}}],
               timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 5, predicted_ms: 75, predicted_per_second: 53.3333333333},
             },
           },

@@ -856,7 +856,7 @@
       if (lastDecodeAt !== null && at > lastDecodeAt) {
         const measuredRate = count * 1000 / (at - lastDecodeAt);
         liveDecodeRate = measuredRate;
-        recordDecodeRateSample(measuredRate, !exact, at);
+        recordDecodeRateSample(measuredRate, !exact, at, "browser", at - lastDecodeAt);
         liveDecodeIsProvisional = !exact;
       }
       // The first emitted token establishes the decode baseline. It has no
@@ -864,16 +864,22 @@
       lastDecodeAt = at;
     }
 
-    function recordDecodeRateSample(rate, provisional, at = performance.now(), source = "browser") {
+    function recordDecodeRateSample(rate, provisional, at = performance.now(), source = "browser", durationMs = null) {
       if (!Number.isFinite(rate) || rate <= 0) return;
-      decodeRateSamples.push({rate, provisional, source, elapsed: Math.max(0, (at - startedAt) / 1000)});
+      decodeRateSamples.push({
+        rate,
+        provisional,
+        source,
+        elapsed: Math.max(0, (at - startedAt) / 1000),
+        durationMs: Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 1,
+      });
     }
 
-    function recordServerDecodeRate(rate, at) {
+    function recordServerDecodeRate(rate, at, durationMs) {
       if (!Number.isFinite(rate) || rate <= 0) return;
       liveDecodeRate = rate;
       liveDecodeIsProvisional = false;
-      recordDecodeRateSample(rate, false, at, "server");
+      recordDecodeRateSample(rate, false, at, "server", durationMs);
     }
 
     function decodeRateSummary() {
@@ -891,17 +897,24 @@
       }
 
       const sortedSamples = [...decodeRateSamples].sort((left, right) => left.rate - right.rate);
-      const average = (samples) => samples.reduce((total, sample) => total + sample.rate, 0) / samples.length;
+      const sampleWeight = (sample) => Number.isFinite(sample.durationMs) && sample.durationMs > 0
+        ? sample.durationMs
+        : 1;
+      const totalWeight = sortedSamples.reduce((total, sample) => total + sampleWeight(sample), 0);
+      const average = (samples) => samples.reduce(
+        (total, sample) => total + sample.rate * sampleWeight(sample),
+        0,
+      ) / totalWeight;
       const percentile = (fraction) => {
-        const position = (sortedSamples.length - 1) * fraction;
-        const lowerIndex = Math.floor(position);
-        const upperIndex = Math.ceil(position);
-        const lower = sortedSamples[lowerIndex];
-        const upper = sortedSamples[upperIndex];
-        const ratio = position - lowerIndex;
+        const targetWeight = totalWeight * fraction;
+        let accumulatedWeight = 0;
+        const selected = sortedSamples.find((sample) => {
+          accumulatedWeight += sampleWeight(sample);
+          return accumulatedWeight >= targetWeight;
+        }) || sortedSamples.at(-1);
         return {
-          value: lower.rate + (upper.rate - lower.rate) * ratio,
-          provisional: lower.provisional || upper.provisional,
+          value: selected.rate,
+          provisional: selected.provisional,
         };
       };
       const peak = percentile(0.95);
@@ -982,9 +995,10 @@
           latestServerDecodeRate = reportedDecodeRate;
         }
 
-        // MTP/speculative decoding validates several tokens together. Each
-        // timing advance is one real decode batch, which is the right source
-        // for the live trend and its distribution statistics.
+        // MTP/speculative decoding validates several tokens together. Only a
+        // predicted_ms advance marks a new batch. SSE events in between carry
+        // more tokens from the same completed batch and must not replace the
+        // prior batch checkpoint.
         const predictedMs = Number(timings && timings.predicted_ms);
         const hasTimingTotals = reportedCompletionTokens !== null
           && Number.isFinite(predictedMs)
@@ -995,23 +1009,22 @@
           decodeRateSamples.length = 0;
           liveDecodeRate = null;
         }
-        if (
-          hasTimingTotals
-          && predictedMs > 0
-          && lastTimingPredictedTokens !== null
-          && lastTimingPredictedMs !== null
-          && reportedCompletionTokens > lastTimingPredictedTokens
-          && predictedMs > lastTimingPredictedMs
-        ) {
-          recordServerDecodeRate(
-            (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
-              / (predictedMs - lastTimingPredictedMs),
-            at,
-          );
-        }
         if (hasTimingTotals && predictedMs > 0) {
-          lastTimingPredictedTokens = reportedCompletionTokens;
-          lastTimingPredictedMs = predictedMs;
+          if (lastTimingPredictedMs === null || predictedMs < lastTimingPredictedMs) {
+            lastTimingPredictedTokens = reportedCompletionTokens;
+            lastTimingPredictedMs = predictedMs;
+          } else if (predictedMs > lastTimingPredictedMs) {
+            if (reportedCompletionTokens > lastTimingPredictedTokens) {
+              recordServerDecodeRate(
+                (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
+                  / (predictedMs - lastTimingPredictedMs),
+                at,
+                predictedMs - lastTimingPredictedMs,
+              );
+            }
+            lastTimingPredictedTokens = reportedCompletionTokens;
+            lastTimingPredictedMs = predictedMs;
+          }
         }
       }
 
