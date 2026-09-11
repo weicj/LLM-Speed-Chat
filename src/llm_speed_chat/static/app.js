@@ -706,7 +706,7 @@
 
     const peakSample = rawSamples.reduce((best, sample) => sample.rate > best.rate ? sample : best, rawSamples[0]);
     const lowSample = rawSamples.reduce((best, sample) => sample.rate < best.rate ? sample : best, rawSamples[0]);
-    const mark = (sample, color, label, alignRight = false) => {
+    const mark = (sample, color, label, verticalOffset) => {
       const point = pointAt(sample);
       context.beginPath();
       context.arc(point.x, point.y, 4, 0, Math.PI * 2);
@@ -715,12 +715,20 @@
       if (!latestDecodeComplete) return;
       context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
       context.fillStyle = color;
-      context.textAlign = alignRight ? "right" : "left";
-      context.fillText(`${label} @ ${(sample.elapsed || 0).toFixed(2)}s`, alignRight ? point.x - 7 : point.x + 7, Math.max(11, point.y - 8));
+      const labelText = `${label} ${formatRate(sample.rate)} @ ${(sample.elapsed || 0).toFixed(2)}s`;
+      const placeLeft = point.x > plotLeft + plotWidth * 0.65;
+      context.textAlign = placeLeft ? "right" : "left";
+      context.fillText(
+        labelText,
+        placeLeft ? point.x - 7 : point.x + 7,
+        Math.min(plotBottom - 4, Math.max(11, point.y + verticalOffset)),
+      );
     };
-    if (rawSamples.length > 1) {
-      mark(peakSample, isDark ? "#f87171" : "#dc2626", t("decodePeakMarker"));
-      mark(lowSample, isDark ? "#34d399" : "#047857", t("decodeLowMarker"), true);
+    if (rawSamples.length > 1 && peakSample.rate !== lowSample.rate) {
+      mark(peakSample, isDark ? "#f87171" : "#dc2626", t("decodePeakMarker"), -8);
+      mark(lowSample, isDark ? "#34d399" : "#047857", t("decodeLowMarker"), 15);
+    } else if (latestDecodeComplete) {
+      mark(peakSample, isDark ? "#60a5fa" : "#2563eb", `${t("decodePeakMarker")}/${t("decodeLowMarker")}`, -8);
     }
     context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
     context.fillStyle = isDark ? "#cbd5e1" : "#667085";
@@ -830,6 +838,8 @@
         recordDecodeRateSample(measuredRate, !exact, at);
         liveDecodeIsProvisional = !exact;
       }
+      // The first emitted token establishes the decode baseline. It has no
+      // preceding interval, so it never becomes a zero-rate Low/P5 sample.
       lastDecodeAt = at;
     }
 

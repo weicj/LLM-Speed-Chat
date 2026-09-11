@@ -435,11 +435,10 @@ body{
   border-top:1px solid #e4e7ec;
 }
 
-.decodeDetail{
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:12px;
+.decodeSummaryItem{
+  display:grid;
+  gap:4px;
+  min-width:0;
 }
 
 .decodeChart{
