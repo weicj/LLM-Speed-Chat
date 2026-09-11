@@ -828,6 +828,8 @@
     let liveDecodeRate = null;
     let liveDecodeIsProvisional = true;
     const decodeRateSamples = [];
+    const serverDecodeBatches = [];
+    const liveDecodeWindowMs = 250;
     let lastTimingPredictedTokens = null;
     let lastTimingPredictedMs = null;
     let finalDecodeRate = null;
@@ -856,7 +858,7 @@
       if (lastDecodeAt !== null && at > lastDecodeAt) {
         const measuredRate = count * 1000 / (at - lastDecodeAt);
         liveDecodeRate = measuredRate;
-        recordDecodeRateSample(measuredRate, !exact, at, "browser", at - lastDecodeAt);
+        recordDecodeRateSample(measuredRate, !exact, at, "browser", at - lastDecodeAt, count);
         liveDecodeIsProvisional = !exact;
       }
       // The first emitted token establishes the decode baseline. It has no
@@ -864,7 +866,14 @@
       lastDecodeAt = at;
     }
 
-    function recordDecodeRateSample(rate, provisional, at = performance.now(), source = "browser", durationMs = null) {
+    function recordDecodeRateSample(
+      rate,
+      provisional,
+      at = performance.now(),
+      source = "browser",
+      durationMs = null,
+      tokenCount = null,
+    ) {
       if (!Number.isFinite(rate) || rate <= 0) return;
       decodeRateSamples.push({
         rate,
@@ -872,14 +881,30 @@
         source,
         elapsed: Math.max(0, (at - startedAt) / 1000),
         durationMs: Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 1,
+        tokenCount: Number.isFinite(tokenCount) && tokenCount > 0 ? tokenCount : null,
       });
     }
 
-    function recordServerDecodeRate(rate, at, durationMs) {
-      if (!Number.isFinite(rate) || rate <= 0) return;
-      liveDecodeRate = rate;
+    function recordServerDecodeRate(at, durationMs, tokenCount) {
+      if (!Number.isFinite(durationMs) || durationMs <= 0 || !Number.isFinite(tokenCount) || tokenCount <= 0) return;
+      serverDecodeBatches.push({durationMs, tokenCount});
+      if (serverDecodeBatches.length > 24) serverDecodeBatches.shift();
+
+      let remainingMs = liveDecodeWindowMs;
+      let windowMs = 0;
+      let windowTokens = 0;
+      for (let index = serverDecodeBatches.length - 1; index >= 0 && remainingMs > 0; index -= 1) {
+        const batch = serverDecodeBatches[index];
+        const includedMs = Math.min(batch.durationMs, remainingMs);
+        windowMs += includedMs;
+        windowTokens += batch.tokenCount * includedMs / batch.durationMs;
+        remainingMs -= includedMs;
+      }
+      const rollingRate = windowTokens * 1000 / windowMs;
+      if (!Number.isFinite(rollingRate) || rollingRate <= 0) return;
+      liveDecodeRate = rollingRate;
       liveDecodeIsProvisional = false;
-      recordDecodeRateSample(rate, false, at, "server", durationMs);
+      recordDecodeRateSample(rollingRate, false, at, "server", durationMs, tokenCount);
     }
 
     function decodeRateSummary() {
@@ -901,10 +926,12 @@
         ? sample.durationMs
         : 1;
       const totalWeight = sortedSamples.reduce((total, sample) => total + sampleWeight(sample), 0);
-      const average = (samples) => samples.reduce(
-        (total, sample) => total + sample.rate * sampleWeight(sample),
-        0,
-      ) / totalWeight;
+      const average = (samples) => samples.reduce((total, sample) => {
+        if (Number.isFinite(sample.tokenCount) && sample.tokenCount > 0) {
+          return total + sample.tokenCount;
+        }
+        return total + sample.rate * sampleWeight(sample) / 1000;
+      }, 0) * 1000 / totalWeight;
       const percentile = (fraction) => {
         const targetWeight = totalWeight * fraction;
         let accumulatedWeight = 0;
@@ -1016,10 +1043,9 @@
           } else if (predictedMs > lastTimingPredictedMs) {
             if (reportedCompletionTokens > lastTimingPredictedTokens) {
               recordServerDecodeRate(
-                (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
-                  / (predictedMs - lastTimingPredictedMs),
                 at,
                 predictedMs - lastTimingPredictedMs,
+                reportedCompletionTokens - lastTimingPredictedTokens,
               );
             }
             lastTimingPredictedTokens = reportedCompletionTokens;
@@ -1060,8 +1086,9 @@
           : null
       );
       // llama.cpp's predicted_per_second is its cumulative model-side decode
-      // rate and is the best Overall Decode Speed. The live trend deliberately
-      // uses verification-batch rates to preserve real speed variation.
+      // rate and is the best Overall Decode Speed. The live trend uses a short
+      // rolling window of verification batches to preserve variation without
+      // letting one short MTP batch dominate the visible current rate.
       const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
