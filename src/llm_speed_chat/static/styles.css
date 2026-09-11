@@ -354,59 +354,6 @@ body{
   padding:14px;
 }
 
-.decodeStat{
-  position:relative;
-}
-
-.decodeStatHeader{
-  padding-right:34px;
-}
-
-.decodeDetailsButton{
-  position:absolute;
-  top:14px;
-  right:10px;
-  width:28px;
-  height:28px;
-  display:grid;
-  place-items:center;
-  border:0;
-  border-radius:6px;
-  background:transparent;
-  color:#667085;
-  cursor:pointer;
-}
-
-.decodeDetailsButton:hover{
-  background:#eef2f6;
-}
-
-.decodeDetailsButton:focus-visible{
-  outline:2px solid #475467;
-  outline-offset:2px;
-}
-
-.chevronIcon{
-  width:7px;
-  height:7px;
-  border-right:1.5px solid currentColor;
-  border-bottom:1.5px solid currentColor;
-  transform:rotate(45deg) translateY(-2px);
-  transition:transform .16s ease;
-}
-
-.decodeDetailsButton[aria-expanded="true"] .chevronIcon{
-  transform:rotate(225deg) translate(-1px,-1px);
-}
-
-.decodeDetails{
-  display:block;
-}
-
-.decodeDetails[hidden]{
-  display:none;
-}
-
 .decodeDetailsPanel{
   margin:0 0 14px;
   padding:16px;
@@ -414,10 +361,6 @@ body{
   border-radius:14px;
   background:#fff;
   box-shadow:0 8px 24px rgba(15,23,42,.04);
-}
-
-.decodeDetailsPanel[hidden]{
-  display:none;
 }
 
 .decodeDetailsPanelHeader{
@@ -503,6 +446,40 @@ body{
   width:100%;
   height:150px;
   display:block;
+}
+
+.decodeChartLegend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-top:8px;
+  color:#667085;
+  font-size:11px;
+}
+
+.decodeChartLegend > span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.legendSwatch{
+  width:16px;
+  height:2px;
+  display:inline-block;
+  background:#2563eb;
+}
+
+.legendAverage{
+  background:#b45309;
+  border-top:1px dashed #b45309;
+  height:0;
+}
+
+.legendTtft{
+  width:2px;
+  height:12px;
+  background:#7e22ce;
 }
 
 .detailVal{
@@ -841,10 +818,6 @@ html[data-theme="dark"] .languageButton:hover,
 html[data-theme="dark"] .themeButton:hover,
 html[data-theme="dark"] .languageMenu button:hover,
 html[data-theme="dark"] .languageMenu button.active,
-html[data-theme="dark"] .decodeDetailsButton:hover{
-  background:#242c37;
-}
-
 html[data-theme="dark"] .languageButton:focus-visible,
 html[data-theme="dark"] .themeButton:focus-visible,
 html[data-theme="dark"] .repoLink:focus-visible{
@@ -880,10 +853,6 @@ html[data-theme="dark"] .previewModeButton.active{
   color:#f3f4f6;
 }
 
-html[data-theme="dark"] .decodeDetails{
-  border-top-color:#303a48;
-}
-
 html[data-theme="dark"] .decodeDetailsPanel{
   border-color:#303a48;
   background:#171c23;
@@ -892,7 +861,8 @@ html[data-theme="dark"] .decodeDetailsPanel{
 
 html[data-theme="dark"] .decodeDetailsSubtitle,
 html[data-theme="dark"] .decodeAxisLabel,
-html[data-theme="dark"] .decodeChartEmpty{
+html[data-theme="dark"] .decodeChartEmpty,
+html[data-theme="dark"] .decodeChartLegend{
   color:#aeb8c7;
 }
 
@@ -900,9 +870,6 @@ html[data-theme="dark"] .decodeDetailsSummary{
   border-top-color:#303a48;
 }
 
-html[data-theme="dark"] .decodeDetailsButton{
-  color:#aeb8c7;
-}
 
 html[data-theme="dark"] .languageMenu button,
 html[data-theme="dark"] .field input,

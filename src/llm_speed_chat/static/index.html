@@ -86,19 +86,12 @@
 
       <section class="stats" data-i18n-aria-label="benchmarkMetrics" aria-label="Benchmark Metrics">
         <article class="stat">
-          <p class="label" data-i18n="promptThroughput">Prompt Throughput</p>
+          <p class="label" data-i18n="promptThroughput">Prefill Speed</p>
           <p class="val" id="promptThroughput">--</p>
         </article>
         <article class="stat decodeStat">
-          <div class="decodeStatHeader">
-            <div>
-              <p class="label" data-i18n="decodeSpeed">Decode Speed</p>
-              <p class="val" id="decodeSpeed">--</p>
-            </div>
-            <button class="decodeDetailsButton" id="decodeDetailsButton" type="button" aria-expanded="false" aria-controls="decodeDetails" data-i18n-aria-label="showDecodeDetails" aria-label="Show decode speed details">
-              <span class="chevronIcon" aria-hidden="true"></span>
-            </button>
-          </div>
+          <p class="label" data-i18n="decodeSpeed">Decode Speed</p>
+          <p class="val" id="decodeSpeed">--</p>
         </article>
         <article class="stat">
           <p class="label" data-i18n="generatedTokens">Generated Tokens</p>
@@ -114,14 +107,14 @@
         </article>
       </section>
 
-      <section class="decodeDetailsPanel" id="decodeDetails" hidden aria-labelledby="decodeDetailsTitle">
+      <section class="decodeDetailsPanel" id="decodeDetails" aria-labelledby="decodeDetailsTitle">
         <div class="decodeDetailsPanelHeader">
           <div>
             <p class="decodeDetailsTitle" id="decodeDetailsTitle" data-i18n="decodeTrend">Decode Speed Trend</p>
             <p class="decodeDetailsSubtitle" data-i18n="decodeTrendHint">Live samples from the current response</p>
           </div>
           <div class="decodeChartCurrent">
-            <span class="label" data-i18n="currentDecodeSpeed">Current</span>
+            <span class="label" data-i18n="overallDecodeSpeed">Overall Decode Speed</span>
             <strong id="decodeChartCurrent">--</strong>
           </div>
         </div>
@@ -130,6 +123,11 @@
           <canvas class="decodeChart" id="decodeChart" role="img" data-i18n-aria-label="decodeTrend" aria-label="Decode Speed Trend"></canvas>
           <div class="decodeChartEmpty" id="decodeChartEmpty" data-i18n="decodeChartEmpty">Waiting for decode samples...</div>
           <div class="decodeAxisLabel decodeAxisMin" id="decodeChartMin">--</div>
+        </div>
+        <div class="decodeChartLegend" aria-hidden="true">
+          <span><i class="legendSwatch legendTrend"></i><span data-i18n="decodeTrendLegend">Speed trend</span></span>
+          <span><i class="legendSwatch legendAverage"></i><span data-i18n="decodeAverageLegend">Average</span></span>
+          <span><i class="legendSwatch legendTtft"></i><span data-i18n="decodeTtftLegend">TTFT</span></span>
         </div>
         <div class="decodeDetailsSummary">
           <div class="decodeDetail"><span class="label" data-i18n="peakDecodeSpeed">Peak 95%</span><span class="detailVal" id="peakDecodeSpeed">--</span></div>

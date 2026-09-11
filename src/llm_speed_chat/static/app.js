@@ -45,7 +45,6 @@
   const midDecodeSpeedEl = el("midDecodeSpeed");
   const meanDecodeSpeedEl = el("meanDecodeSpeed");
   const lowDecodeSpeedEl = el("lowDecodeSpeed");
-  const decodeDetailsButton = el("decodeDetailsButton");
   const decodeDetailsEl = el("decodeDetails");
   const decodeChart = el("decodeChart");
   const decodeChartCurrentEl = el("decodeChartCurrent");
@@ -117,7 +116,7 @@
       frameworkAuto: "Auto-detected",
       frameworkUniversal: "Universal",
       benchmarkMetrics: "Benchmark Metrics",
-      promptThroughput: "Prompt Throughput",
+      promptThroughput: "Prefill Speed",
       decodeSpeed: "Decode Speed",
       peakDecodeSpeed: "Peak 95%",
       midDecodeSpeed: "Mid 50%",
@@ -126,9 +125,15 @@
       decodeTrend: "Decode Speed Trend",
       decodeTrendHint: "Live samples from the current response",
       currentDecodeSpeed: "Current",
+      overallDecodeSpeed: "Overall Decode Speed",
       decodeSamples: "Samples",
       decodeChartEmpty: "Waiting for decode samples...",
-      showDecodeDetails: "Show decode speed details",
+      decodeTrendLegend: "Speed trend",
+      decodeAverageLegend: "Average",
+      decodeTtftLegend: "TTFT",
+      decodePeakMarker: "Peak",
+      decodeLowMarker: "Low",
+      decodeDuration: "Decode",
       generatedTokens: "Generated Tokens",
       ttft: "Time to First Token",
       wallTime: "Wall Time",
@@ -189,7 +194,7 @@
       frameworkAuto: "自动检测",
       frameworkUniversal: "通用",
       benchmarkMetrics: "性能指标",
-      promptThroughput: "提示吞吐",
+      promptThroughput: "预填充速度 Prefill Speed",
       decodeSpeed: "解码速度",
       peakDecodeSpeed: "最高 95%",
       midDecodeSpeed: "中位 50%",
@@ -198,9 +203,15 @@
       decodeTrend: "解码速度趋势",
       decodeTrendHint: "当前响应的实时采样",
       currentDecodeSpeed: "当前",
+      overallDecodeSpeed: "总体解码速度",
       decodeSamples: "采样数",
       decodeChartEmpty: "等待解码采样...",
-      showDecodeDetails: "显示解码速度详情",
+      decodeTrendLegend: "速度趋势",
+      decodeAverageLegend: "平均值",
+      decodeTtftLegend: "TTFT",
+      decodePeakMarker: "最高",
+      decodeLowMarker: "最低",
+      decodeDuration: "解码",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
       wallTime: "总耗时",
@@ -244,6 +255,10 @@
   let previewMarkup = "";
   let previewMode = "standard";
   let latestDecodeSamples = [];
+  let latestDecodeWallSeconds = 0;
+  let latestDecodeTTFTSeconds = 0;
+  let latestDecodeDurationSeconds = 0;
+  let latestDecodeComplete = false;
 
   apiBaseUrlEl.value = storage.getItem(upstreamStorageKey) || CONFIG.upstream_base_url || "";
   apiKeyEl.value = session.getItem(apiKeyStorageKey) || "";
@@ -410,6 +425,7 @@
     }
     applyTheme();
     refreshFrameworkDetection();
+    drawDecodeChart();
   }
 
   function applyTheme() {
@@ -418,6 +434,7 @@
     const action = theme === "dark" ? "enableLightMode" : "enableDarkMode";
     themeButton.setAttribute("aria-label", t(action));
     themeButton.title = t(action);
+    drawDecodeChart();
   }
 
   function setLanguage(nextLanguage) {
@@ -558,6 +575,10 @@
     ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
     latestDecodeSamples = Array.isArray(metrics.decode_samples) ? metrics.decode_samples : [];
+    latestDecodeWallSeconds = Number(metrics.wall_s) || 0;
+    latestDecodeTTFTSeconds = Number(metrics.ttft_s) || 0;
+    latestDecodeDurationSeconds = Number(metrics.decode_duration_s) || 0;
+    latestDecodeComplete = metrics.decode_complete === true;
     decodeChartCurrentEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
     decodeSampleCountEl.textContent = String(latestDecodeSamples.length);
     decodeChartEmptyEl.hidden = latestDecodeSamples.length > 0;
@@ -565,7 +586,6 @@
   }
 
   function drawDecodeChart() {
-    if (decodeDetailsEl.hidden) return;
     const context = decodeChart.getContext("2d");
     const width = decodeChart.clientWidth;
     const height = decodeChart.clientHeight;
@@ -581,9 +601,20 @@
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const samples = latestDecodeSamples.slice(-60);
+    const rawSamples = latestDecodeSamples.filter((sample) => Number.isFinite(sample.rate) && sample.rate > 0);
+    const samples = rawSamples.length > 80
+      ? Array.from({length: 80}, (_, index) => {
+        const start = Math.floor(index * rawSamples.length / 80);
+        const end = Math.max(start + 1, Math.floor((index + 1) * rawSamples.length / 80));
+        const bucket = rawSamples.slice(start, end);
+        return {
+          rate: bucket.reduce((sum, sample) => sum + sample.rate, 0) / bucket.length,
+          elapsed: bucket.reduce((sum, sample) => sum + (sample.elapsed || 0), 0) / bucket.length,
+        };
+      })
+      : rawSamples;
     if (!samples.length) return;
-    const rates = samples.map((sample) => sample.rate).filter((rate) => Number.isFinite(rate) && rate > 0);
+    const rates = rawSamples.map((sample) => sample.rate);
     if (!rates.length) return;
 
     const minimum = Math.min(...rates);
@@ -591,6 +622,8 @@
     const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1);
     const lower = Math.max(0, minimum - padding);
     const upper = maximum + padding;
+    const averageRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+    const wallTime = Math.max(latestDecodeWallSeconds, samples.at(-1).elapsed || 0, 0.1);
     decodeChartMaxEl.textContent = formatRate(upper);
     decodeChartMinEl.textContent = formatRate(lower);
     const plotLeft = 2;
@@ -611,15 +644,15 @@
       context.stroke();
     }
 
-    const pointAt = (sample, index) => ({
-      x: samples.length === 1 ? plotLeft + plotWidth / 2 : plotLeft + plotWidth * index / (samples.length - 1),
+    const pointAt = (sample) => ({
+      x: plotLeft + plotWidth * Math.min(1, Math.max(0, (sample.elapsed || 0) / wallTime)),
       y: plotBottom - (sample.rate - lower) / (upper - lower) * plotHeight,
     });
-    const firstPoint = pointAt(samples[0], 0);
+    const firstPoint = pointAt(samples[0]);
     context.beginPath();
     context.moveTo(firstPoint.x, plotBottom);
-    samples.forEach((sample, index) => {
-      const point = pointAt(sample, index);
+    samples.forEach((sample) => {
+      const point = pointAt(sample);
       context.lineTo(point.x, point.y);
     });
     context.lineTo(plotRight, plotBottom);
@@ -629,7 +662,7 @@
 
     context.beginPath();
     samples.forEach((sample, index) => {
-      const point = pointAt(sample, index);
+      const point = pointAt(sample);
       if (index === 0) context.moveTo(point.x, point.y);
       else context.lineTo(point.x, point.y);
     });
@@ -639,7 +672,64 @@
     context.lineCap = "round";
     context.stroke();
 
-    const finalPoint = pointAt(samples.at(-1), samples.length - 1);
+    const averageY = plotBottom - (averageRate - lower) / (upper - lower) * plotHeight;
+    context.beginPath();
+    context.setLineDash([5, 4]);
+    context.moveTo(plotLeft, averageY);
+    context.lineTo(plotRight, averageY);
+    context.strokeStyle = isDark ? "#fbbf24" : "#b45309";
+    context.lineWidth = 1.25;
+    context.stroke();
+    context.setLineDash([]);
+
+    context.strokeStyle = isDark ? "#64748b" : "#98a2b3";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(plotLeft, plotTop);
+    context.lineTo(plotLeft, plotBottom);
+    context.lineTo(plotRight, plotBottom);
+    context.stroke();
+
+    const ttftX = plotLeft + plotWidth * Math.min(1, Math.max(0, latestDecodeTTFTSeconds / wallTime));
+    context.beginPath();
+    context.setLineDash([3, 3]);
+    context.moveTo(ttftX, plotTop);
+    context.lineTo(ttftX, plotBottom);
+    context.strokeStyle = isDark ? "#c084fc" : "#7e22ce";
+    context.lineWidth = 1.25;
+    context.stroke();
+    context.setLineDash([]);
+    context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    context.fillStyle = isDark ? "#d8b4fe" : "#7e22ce";
+    context.textAlign = ttftX > plotLeft + plotWidth * 0.8 ? "right" : "left";
+    context.fillText(`TTFT ${(latestDecodeTTFTSeconds || 0).toFixed(2)}s`, ttftX + (context.textAlign === "right" ? -4 : 4), plotTop + 11);
+
+    const peakSample = rawSamples.reduce((best, sample) => sample.rate > best.rate ? sample : best, rawSamples[0]);
+    const lowSample = rawSamples.reduce((best, sample) => sample.rate < best.rate ? sample : best, rawSamples[0]);
+    const mark = (sample, color, label, alignRight = false) => {
+      const point = pointAt(sample);
+      context.beginPath();
+      context.arc(point.x, point.y, 4, 0, Math.PI * 2);
+      context.fillStyle = color;
+      context.fill();
+      if (!latestDecodeComplete) return;
+      context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      context.fillStyle = color;
+      context.textAlign = alignRight ? "right" : "left";
+      context.fillText(`${label} @ ${(sample.elapsed || 0).toFixed(2)}s`, alignRight ? point.x - 7 : point.x + 7, Math.max(11, point.y - 8));
+    };
+    if (rawSamples.length > 1) {
+      mark(peakSample, isDark ? "#f87171" : "#dc2626", t("decodePeakMarker"));
+      mark(lowSample, isDark ? "#34d399" : "#047857", t("decodeLowMarker"), true);
+    }
+    context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    context.fillStyle = isDark ? "#cbd5e1" : "#667085";
+    context.textAlign = "left";
+    context.fillText("0s", plotLeft + 3, height - 2);
+    context.textAlign = "right";
+    context.fillText(latestDecodeComplete ? `${t("decodeDuration")} ${latestDecodeDurationSeconds.toFixed(2)}s` : "live", plotRight, height - 2);
+
+    const finalPoint = pointAt(samples.at(-1));
     context.beginPath();
     context.arc(finalPoint.x, finalPoint.y, 3, 0, Math.PI * 2);
     context.fillStyle = isDark ? "#bfdbfe" : "#1d4ed8";
@@ -737,15 +827,15 @@
       if (lastDecodeAt !== null && at > lastDecodeAt) {
         const measuredRate = count * 1000 / (at - lastDecodeAt);
         liveDecodeRate = measuredRate;
-        recordDecodeRateSample(measuredRate, !exact);
+        recordDecodeRateSample(measuredRate, !exact, at);
         liveDecodeIsProvisional = !exact;
       }
       lastDecodeAt = at;
     }
 
-    function recordDecodeRateSample(rate, provisional) {
+    function recordDecodeRateSample(rate, provisional, at = performance.now()) {
       if (!Number.isFinite(rate) || rate <= 0) return;
-      decodeRateSamples.push({rate, provisional});
+      decodeRateSamples.push({rate, provisional, elapsed: Math.max(0, (at - startedAt) / 1000)});
     }
 
     function decodeRateSummary() {
@@ -870,6 +960,7 @@
             (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
               / (predictedMs - lastTimingPredictedMs),
             false,
+            eventTime,
           );
         }
         if (reportedCompletionTokens !== null && Number.isFinite(predictedMs) && predictedMs > 0) {
@@ -923,6 +1014,7 @@
         low_decode_tok_s: decodeRateStats.low,
         completion_tokens: visibleCompletionTokens,
         ttft_s: ttftSeconds,
+        decode_duration_s: ttftSeconds === null ? 0 : Math.max(0, wallSeconds - ttftSeconds),
         wall_s: wallSeconds,
         prompt_provisional: promptTimingRate === null && promptTokens === null,
         decode_provisional: decodeIsProvisional,
@@ -931,6 +1023,7 @@
         mean_decode_provisional: decodeRateStats.meanProvisional,
         low_decode_provisional: decodeRateStats.lowProvisional,
         decode_samples: decodeRateSamples,
+        decode_complete: finishedAt !== null,
         completion_provisional: completionTokens === null,
       });
     }
@@ -976,6 +1069,10 @@
     meanDecodeSpeedEl.textContent = "--";
     lowDecodeSpeedEl.textContent = "--";
     latestDecodeSamples = [];
+    latestDecodeWallSeconds = 0;
+    latestDecodeTTFTSeconds = 0;
+    latestDecodeDurationSeconds = 0;
+    latestDecodeComplete = false;
     decodeChartCurrentEl.textContent = "--";
     decodeChartMaxEl.textContent = "--";
     decodeChartMinEl.textContent = "--";
@@ -1805,13 +1902,6 @@
   });
 
   clearBtn.addEventListener("click", clearConversation);
-
-  decodeDetailsButton.addEventListener("click", () => {
-    const expanded = decodeDetailsButton.getAttribute("aria-expanded") === "true";
-    decodeDetailsButton.setAttribute("aria-expanded", String(!expanded));
-    decodeDetailsEl.hidden = expanded;
-    if (!expanded) drawDecodeChart();
-  });
 
   window.addEventListener("resize", drawDecodeChart);
 
