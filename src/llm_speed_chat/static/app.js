@@ -602,7 +602,11 @@
     context.clearRect(0, 0, width, height);
 
     const rawSamples = latestDecodeSamples.filter((sample) => Number.isFinite(sample.rate) && sample.rate > 0);
-    const samples = rawSamples.length > 80
+    const liveWindowSize = 60;
+    const visibleRawSamples = latestDecodeComplete
+      ? rawSamples
+      : rawSamples.slice(-liveWindowSize);
+    const samples = latestDecodeComplete && rawSamples.length > 80
       ? Array.from({length: 80}, (_, index) => {
         const start = Math.floor(index * rawSamples.length / 80);
         const end = Math.max(start + 1, Math.floor((index + 1) * rawSamples.length / 80));
@@ -612,9 +616,11 @@
           elapsed: bucket.reduce((sum, sample) => sum + (sample.elapsed || 0), 0) / bucket.length,
         };
       })
-      : rawSamples;
+      : visibleRawSamples;
     if (!samples.length) return;
-    const rates = rawSamples.map((sample) => sample.rate);
+    // During generation the chart deliberately reflects the current rolling
+    // window. Once complete, its scale and average cover the full response.
+    const rates = visibleRawSamples.map((sample) => sample.rate);
     if (!rates.length) return;
 
     const minimum = Math.min(...rates);
@@ -623,7 +629,7 @@
     const lower = Math.max(0, minimum - padding);
     const upper = maximum + padding;
     const averageRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
-    const wallTime = Math.max(latestDecodeWallSeconds, samples.at(-1).elapsed || 0, 0.1);
+    const wallTime = Math.max(latestDecodeWallSeconds, rawSamples.at(-1).elapsed || 0, 0.1);
     decodeChartMaxEl.textContent = formatRate(upper);
     decodeChartMinEl.textContent = formatRate(lower);
     const plotLeft = 2;
@@ -644,25 +650,30 @@
       context.stroke();
     }
 
-    const pointAt = (sample) => ({
-      x: plotLeft + plotWidth * Math.min(1, Math.max(0, (sample.elapsed || 0) / wallTime)),
-      y: plotBottom - (sample.rate - lower) / (upper - lower) * plotHeight,
-    });
-    const firstPoint = pointAt(samples[0]);
+    const pointAt = (sample, index, collection = samples) => {
+      const x = latestDecodeComplete
+        ? plotLeft + plotWidth * Math.min(1, Math.max(0, (sample.elapsed || 0) / wallTime))
+        : plotRight - plotWidth * (collection.length - 1 - index) / (liveWindowSize - 1);
+      return {
+        x,
+        y: plotBottom - (sample.rate - lower) / (upper - lower) * plotHeight,
+      };
+    };
+    const firstPoint = pointAt(samples[0], 0);
     context.beginPath();
     context.moveTo(firstPoint.x, plotBottom);
-    samples.forEach((sample) => {
-      const point = pointAt(sample);
+    samples.forEach((sample, index) => {
+      const point = pointAt(sample, index);
       context.lineTo(point.x, point.y);
     });
-    context.lineTo(plotRight, plotBottom);
+    context.lineTo(pointAt(samples.at(-1), samples.length - 1).x, plotBottom);
     context.closePath();
     context.fillStyle = isDark ? "rgba(96,165,250,.18)" : "rgba(37,99,235,.12)";
     context.fill();
 
     context.beginPath();
     samples.forEach((sample, index) => {
-      const point = pointAt(sample);
+      const point = pointAt(sample, index);
       if (index === 0) context.moveTo(point.x, point.y);
       else context.lineTo(point.x, point.y);
     });
@@ -690,24 +701,26 @@
     context.lineTo(plotRight, plotBottom);
     context.stroke();
 
-    const ttftX = plotLeft + plotWidth * Math.min(1, Math.max(0, latestDecodeTTFTSeconds / wallTime));
-    context.beginPath();
-    context.setLineDash([3, 3]);
-    context.moveTo(ttftX, plotTop);
-    context.lineTo(ttftX, plotBottom);
-    context.strokeStyle = isDark ? "#c084fc" : "#7e22ce";
-    context.lineWidth = 1.25;
-    context.stroke();
-    context.setLineDash([]);
-    context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-    context.fillStyle = isDark ? "#d8b4fe" : "#7e22ce";
-    context.textAlign = ttftX > plotLeft + plotWidth * 0.8 ? "right" : "left";
-    context.fillText(`TTFT ${(latestDecodeTTFTSeconds || 0).toFixed(2)}s`, ttftX + (context.textAlign === "right" ? -4 : 4), plotTop + 11);
+    if (latestDecodeComplete) {
+      const ttftX = plotLeft + plotWidth * Math.min(1, Math.max(0, latestDecodeTTFTSeconds / wallTime));
+      context.beginPath();
+      context.setLineDash([3, 3]);
+      context.moveTo(ttftX, plotTop);
+      context.lineTo(ttftX, plotBottom);
+      context.strokeStyle = isDark ? "#c084fc" : "#7e22ce";
+      context.lineWidth = 1.25;
+      context.stroke();
+      context.setLineDash([]);
+      context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      context.fillStyle = isDark ? "#d8b4fe" : "#7e22ce";
+      context.textAlign = ttftX > plotLeft + plotWidth * 0.8 ? "right" : "left";
+      context.fillText(`TTFT ${(latestDecodeTTFTSeconds || 0).toFixed(2)}s`, ttftX + (context.textAlign === "right" ? -4 : 4), plotTop + 11);
+    }
 
     const peakSample = rawSamples.reduce((best, sample) => sample.rate > best.rate ? sample : best, rawSamples[0]);
     const lowSample = rawSamples.reduce((best, sample) => sample.rate < best.rate ? sample : best, rawSamples[0]);
     const mark = (sample, color, label, verticalOffset) => {
-      const point = pointAt(sample);
+      const point = pointAt(sample, 0, [sample]);
       context.beginPath();
       context.arc(point.x, point.y, 4, 0, Math.PI * 2);
       context.fillStyle = color;
@@ -724,7 +737,7 @@
         Math.min(plotBottom - 4, Math.max(11, point.y + verticalOffset)),
       );
     };
-    if (rawSamples.length > 1 && peakSample.rate !== lowSample.rate) {
+    if (latestDecodeComplete && rawSamples.length > 1 && peakSample.rate !== lowSample.rate) {
       mark(peakSample, isDark ? "#f87171" : "#dc2626", t("decodePeakMarker"), -8);
       mark(lowSample, isDark ? "#34d399" : "#047857", t("decodeLowMarker"), 15);
     } else if (latestDecodeComplete) {
@@ -733,11 +746,15 @@
     context.font = "10px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
     context.fillStyle = isDark ? "#cbd5e1" : "#667085";
     context.textAlign = "left";
-    context.fillText("0s", plotLeft + 3, height - 2);
+    context.fillText(latestDecodeComplete ? "0s" : "live", plotLeft + 3, height - 2);
     context.textAlign = "right";
-    context.fillText(latestDecodeComplete ? `${t("decodeDuration")} ${latestDecodeDurationSeconds.toFixed(2)}s` : "live", plotRight, height - 2);
+    context.fillText(
+      latestDecodeComplete ? `${t("decodeDuration")} ${latestDecodeDurationSeconds.toFixed(2)}s` : `last ${Math.min(rawSamples.length, liveWindowSize)}`,
+      plotRight,
+      height - 2,
+    );
 
-    const finalPoint = pointAt(samples.at(-1));
+    const finalPoint = pointAt(samples.at(-1), samples.length - 1);
     context.beginPath();
     context.arc(finalPoint.x, finalPoint.y, 3, 0, Math.PI * 2);
     context.fillStyle = isDark ? "#bfdbfe" : "#1d4ed8";
@@ -813,6 +830,7 @@
     let finalDecodeRate = null;
     let finalDecodeIsProvisional = true;
     let latestServerDecodeRate = null;
+    let hasServerDecodeTimings = false;
     let firstDecodeAt = null;
     let lastDecodeAt = null;
     let streamedCompletionTokens = 0;
@@ -843,9 +861,16 @@
       lastDecodeAt = at;
     }
 
-    function recordDecodeRateSample(rate, provisional, at = performance.now()) {
+    function recordDecodeRateSample(rate, provisional, at = performance.now(), source = "browser") {
       if (!Number.isFinite(rate) || rate <= 0) return;
-      decodeRateSamples.push({rate, provisional, elapsed: Math.max(0, (at - startedAt) / 1000)});
+      decodeRateSamples.push({rate, provisional, source, elapsed: Math.max(0, (at - startedAt) / 1000)});
+    }
+
+    function recordServerDecodeRate(rate, at) {
+      if (!Number.isFinite(rate) || rate <= 0) return;
+      liveDecodeRate = rate;
+      liveDecodeIsProvisional = false;
+      recordDecodeRateSample(rate, false, at, "server");
     }
 
     function decodeRateSummary() {
@@ -957,19 +982,26 @@
         // llama.cpp exposes cumulative token/time totals on each timed chunk;
         // their deltas give a model-side instantaneous rate without network jitter.
         const predictedMs = Number(timings && timings.predicted_ms);
-        if (
-          reportedCompletionTokens !== null
+        const hasTimingTotals = reportedCompletionTokens !== null
           && Number.isFinite(predictedMs)
+          && predictedMs >= 0;
+        if (hasTimingTotals && !hasServerDecodeTimings) {
+          // Stop mixing SSE arrival jitter with the model's own token timings.
+          hasServerDecodeTimings = true;
+          decodeRateSamples.length = 0;
+          liveDecodeRate = null;
+        }
+        if (
+          hasTimingTotals
           && predictedMs > 0
           && lastTimingPredictedTokens !== null
           && lastTimingPredictedMs !== null
           && reportedCompletionTokens > lastTimingPredictedTokens
           && predictedMs > lastTimingPredictedMs
         ) {
-          recordDecodeRateSample(
+          recordServerDecodeRate(
             (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
               / (predictedMs - lastTimingPredictedMs),
-            false,
             at,
           );
         }
@@ -991,7 +1023,7 @@
         streamedCompletionTokens = cumulativeCompletionTokens;
         exactDelta += missingTokens;
       }
-      if (exactDelta > 0) recordDecodeTokens(exactDelta, true, at);
+      if (exactDelta > 0 && !hasServerDecodeTimings) recordDecodeTokens(exactDelta, true, at);
       return exactDelta;
     }
 
@@ -1010,10 +1042,12 @@
           ? visiblePromptTokens / ttftSeconds
           : null
       );
-      const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
+      const decodeTokS = finalDecodeRate ?? liveDecodeRate ?? latestServerDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
-        : latestServerDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
+        : liveDecodeRate !== null
+          ? liveDecodeIsProvisional
+          : latestServerDecodeRate === null;
       const decodeRateStats = decodeRateSummary();
       updateMetrics({
         prompt_tok_s: promptTokS,
@@ -1055,7 +1089,7 @@
           firstContentAt = eventTime;
         }
         if (reasoningPiece || contentPiece) generatedText += reasoningPiece + contentPiece;
-        if (exactTokenDelta === 0) {
+        if (exactTokenDelta === 0 && !hasServerDecodeTimings) {
           const estimatedTokenDelta = estimateTextTokens(reasoningPiece + contentPiece);
           if (estimatedTokenDelta > 0) recordDecodeTokens(estimatedTokenDelta, false, eventTime);
         }
