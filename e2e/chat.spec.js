@@ -224,7 +224,8 @@ test("keeps llama.cpp's cumulative decode rate ahead of an MTP batch sample", as
   // The final verification batch is 120 tok/s (3 tokens / 25 ms), while
   // llama.cpp reports the overall 4-token decode rate as 53.3 tok/s.
   await expect(page.locator("#decodeSpeed")).toHaveText("53.3 tok/s");
-  await expect(page.locator("#peakDecodeSpeed")).toHaveText("51.7 tok/s");
+  await expect(page.locator("#decodeChartCurrent")).toHaveText("120 tok/s");
+  await expect(page.locator("#peakDecodeSpeed")).toHaveText("115 tok/s");
 });
 
 test("Universal framework suppresses local-only metric fields and falls back cleanly", async ({ page }) => {
