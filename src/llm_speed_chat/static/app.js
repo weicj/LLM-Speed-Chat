@@ -579,7 +579,10 @@
     latestDecodeTTFTSeconds = Number(metrics.ttft_s) || 0;
     latestDecodeDurationSeconds = Number(metrics.decode_duration_s) || 0;
     latestDecodeComplete = metrics.decode_complete === true;
-    decodeChartCurrentEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
+    decodeChartCurrentEl.textContent = formatRate(
+      metrics.live_decode_tok_s ?? metrics.decode_tok_s,
+      metrics.live_decode_provisional ?? metrics.decode_provisional,
+    );
     decodeSampleCountEl.textContent = String(latestDecodeSamples.length);
     decodeChartEmptyEl.hidden = latestDecodeSamples.length > 0;
     drawDecodeChart();
@@ -825,7 +828,8 @@
     let liveDecodeRate = null;
     let liveDecodeIsProvisional = true;
     const decodeRateSamples = [];
-    let lastServerDecodeTimingTokens = null;
+    let lastTimingPredictedTokens = null;
+    let lastTimingPredictedMs = null;
     let finalDecodeRate = null;
     let finalDecodeIsProvisional = true;
     let latestServerDecodeRate = null;
@@ -865,13 +869,11 @@
       decodeRateSamples.push({rate, provisional, source, elapsed: Math.max(0, (at - startedAt) / 1000)});
     }
 
-    function recordServerDecodeRate(rate, at, completionTokens) {
+    function recordServerDecodeRate(rate, at) {
       if (!Number.isFinite(rate) || rate <= 0) return;
-      if (completionTokens !== null && completionTokens === lastServerDecodeTimingTokens) return;
       liveDecodeRate = rate;
       liveDecodeIsProvisional = false;
       recordDecodeRateSample(rate, false, at, "server");
-      lastServerDecodeTimingTokens = completionTokens;
     }
 
     function decodeRateSummary() {
@@ -980,10 +982,9 @@
           latestServerDecodeRate = reportedDecodeRate;
         }
 
-        // With MTP/speculative decoding, predicted_ms advances once per
-        // verification batch while predicted_n advances for every emitted SSE
-        // token. Use llama.cpp's cumulative rate so detail metrics match the
-        // primary Decode Speed rather than a partial verification batch.
+        // MTP/speculative decoding validates several tokens together. Each
+        // timing advance is one real decode batch, which is the right source
+        // for the live trend and its distribution statistics.
         const predictedMs = Number(timings && timings.predicted_ms);
         const hasTimingTotals = reportedCompletionTokens !== null
           && Number.isFinite(predictedMs)
@@ -994,8 +995,23 @@
           decodeRateSamples.length = 0;
           liveDecodeRate = null;
         }
-        if (hasTimingTotals && reportedDecodeRate !== null) {
-          recordServerDecodeRate(reportedDecodeRate, at, reportedCompletionTokens);
+        if (
+          hasTimingTotals
+          && predictedMs > 0
+          && lastTimingPredictedTokens !== null
+          && lastTimingPredictedMs !== null
+          && reportedCompletionTokens > lastTimingPredictedTokens
+          && predictedMs > lastTimingPredictedMs
+        ) {
+          recordServerDecodeRate(
+            (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
+              / (predictedMs - lastTimingPredictedMs),
+            at,
+          );
+        }
+        if (hasTimingTotals && predictedMs > 0) {
+          lastTimingPredictedTokens = reportedCompletionTokens;
+          lastTimingPredictedMs = predictedMs;
         }
       }
 
@@ -1031,8 +1047,8 @@
           : null
       );
       // llama.cpp's predicted_per_second is its cumulative model-side decode
-      // rate. With MTP/speculative decoding, a single verification batch may
-      // emit several SSE tokens, so it is also the source used by the trend.
+      // rate and is the best Overall Decode Speed. The live trend deliberately
+      // uses verification-batch rates to preserve real speed variation.
       const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
@@ -1041,6 +1057,7 @@
       updateMetrics({
         prompt_tok_s: promptTokS,
         decode_tok_s: decodeTokS,
+        live_decode_tok_s: liveDecodeRate,
         peak_decode_tok_s: decodeRateStats.peak,
         mid_decode_tok_s: decodeRateStats.mid,
         mean_decode_tok_s: decodeRateStats.mean,
@@ -1051,6 +1068,7 @@
         wall_s: wallSeconds,
         prompt_provisional: promptTimingRate === null && promptTokens === null,
         decode_provisional: decodeIsProvisional,
+        live_decode_provisional: liveDecodeIsProvisional,
         peak_decode_provisional: decodeRateStats.peakProvisional,
         mid_decode_provisional: decodeRateStats.midProvisional,
         mean_decode_provisional: decodeRateStats.meanProvisional,
