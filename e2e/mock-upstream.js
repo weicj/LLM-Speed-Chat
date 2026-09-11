@@ -219,6 +219,36 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      if (lastUserText.includes("llama-mtp-timings")) {
+        // MTP/speculative decoding emits several output chunks for a single
+        // timed verification batch. The cumulative server rate must remain
+        // the primary Decode Speed instead of the last batch-only rate.
+        streamChunks(res, [
+          {
+            delayMs: 100,
+            data: {
+              choices: [{delta: {content: "MTP "}}],
+              timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 1, predicted_ms: 0.001, predicted_per_second: 0},
+            },
+          },
+          {
+            delayMs: 100,
+            data: {
+              choices: [{delta: {content: "timing "}}],
+              timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 2, predicted_ms: 50, predicted_per_second: 20},
+            },
+          },
+          {
+            delayMs: 100,
+            data: {
+              choices: [{delta: {content: "works."}}],
+              timings: {prompt_n: 11, prompt_per_second: 55, predicted_n: 5, predicted_ms: 75, predicted_per_second: 53.3333333333},
+            },
+          },
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("sglang-live-metrics")) {
         const continuousUsage = Boolean(payload.stream_options && payload.stream_options.continuous_usage_stats);
         streamChunks(res, [

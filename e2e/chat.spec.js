@@ -212,6 +212,20 @@ test("auto-detects llama.cpp and uses its live server decode rate", async ({ pag
   await expect(page.locator("#decodeSpeed")).toHaveText("25.0 tok/s");
 });
 
+test("keeps llama.cpp's cumulative decode rate ahead of an MTP batch sample", async ({ page }) => {
+  await page.locator("#apiKey").fill("local-llama");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-llama-model");
+
+  await page.locator("#prompt").fill("llama-mtp-timings");
+  await page.locator("#sendBtn").click();
+
+  await expect(page.locator(".msg.assistant").last()).toContainText("MTP timing works.");
+  // The final verification batch is 120 tok/s (3 tokens / 25 ms), while
+  // llama.cpp reports the overall 4-token decode rate as 53.3 tok/s.
+  await expect(page.locator("#decodeSpeed")).toHaveText("53.3 tok/s");
+});
+
 test("Universal framework suppresses local-only metric fields and falls back cleanly", async ({ page }) => {
   const requestPromise = page.waitForRequest((request) => request.url().endsWith("/chat"));
 

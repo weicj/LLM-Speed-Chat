@@ -1042,12 +1042,14 @@
           ? visiblePromptTokens / ttftSeconds
           : null
       );
-      const decodeTokS = finalDecodeRate ?? liveDecodeRate ?? latestServerDecodeRate;
+      // llama.cpp's predicted_per_second is its cumulative model-side decode
+      // rate. With MTP/speculative decoding, a single verification batch may
+      // emit several SSE tokens, so that server value is more representative
+      // than the most recent per-batch sample used in the trend chart.
+      const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
-        : liveDecodeRate !== null
-          ? liveDecodeIsProvisional
-          : latestServerDecodeRate === null;
+        : latestServerDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
       const decodeRateStats = decodeRateSummary();
       updateMetrics({
         prompt_tok_s: promptTokS,
