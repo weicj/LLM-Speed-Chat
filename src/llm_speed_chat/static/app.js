@@ -825,8 +825,7 @@
     let liveDecodeRate = null;
     let liveDecodeIsProvisional = true;
     const decodeRateSamples = [];
-    let lastTimingPredictedTokens = null;
-    let lastTimingPredictedMs = null;
+    let lastServerDecodeTimingTokens = null;
     let finalDecodeRate = null;
     let finalDecodeIsProvisional = true;
     let latestServerDecodeRate = null;
@@ -866,11 +865,13 @@
       decodeRateSamples.push({rate, provisional, source, elapsed: Math.max(0, (at - startedAt) / 1000)});
     }
 
-    function recordServerDecodeRate(rate, at) {
+    function recordServerDecodeRate(rate, at, completionTokens) {
       if (!Number.isFinite(rate) || rate <= 0) return;
+      if (completionTokens !== null && completionTokens === lastServerDecodeTimingTokens) return;
       liveDecodeRate = rate;
       liveDecodeIsProvisional = false;
       recordDecodeRateSample(rate, false, at, "server");
+      lastServerDecodeTimingTokens = completionTokens;
     }
 
     function decodeRateSummary() {
@@ -979,8 +980,10 @@
           latestServerDecodeRate = reportedDecodeRate;
         }
 
-        // llama.cpp exposes cumulative token/time totals on each timed chunk;
-        // their deltas give a model-side instantaneous rate without network jitter.
+        // With MTP/speculative decoding, predicted_ms advances once per
+        // verification batch while predicted_n advances for every emitted SSE
+        // token. Use llama.cpp's cumulative rate so detail metrics match the
+        // primary Decode Speed rather than a partial verification batch.
         const predictedMs = Number(timings && timings.predicted_ms);
         const hasTimingTotals = reportedCompletionTokens !== null
           && Number.isFinite(predictedMs)
@@ -991,23 +994,8 @@
           decodeRateSamples.length = 0;
           liveDecodeRate = null;
         }
-        if (
-          hasTimingTotals
-          && predictedMs > 0
-          && lastTimingPredictedTokens !== null
-          && lastTimingPredictedMs !== null
-          && reportedCompletionTokens > lastTimingPredictedTokens
-          && predictedMs > lastTimingPredictedMs
-        ) {
-          recordServerDecodeRate(
-            (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
-              / (predictedMs - lastTimingPredictedMs),
-            at,
-          );
-        }
-        if (reportedCompletionTokens !== null && Number.isFinite(predictedMs) && predictedMs > 0) {
-          lastTimingPredictedTokens = reportedCompletionTokens;
-          lastTimingPredictedMs = predictedMs;
+        if (hasTimingTotals && reportedDecodeRate !== null) {
+          recordServerDecodeRate(reportedDecodeRate, at, reportedCompletionTokens);
         }
       }
 
@@ -1044,8 +1032,7 @@
       );
       // llama.cpp's predicted_per_second is its cumulative model-side decode
       // rate. With MTP/speculative decoding, a single verification batch may
-      // emit several SSE tokens, so that server value is more representative
-      // than the most recent per-batch sample used in the trend chart.
+      // emit several SSE tokens, so it is also the source used by the trend.
       const decodeTokS = finalDecodeRate ?? latestServerDecodeRate ?? liveDecodeRate;
       const decodeIsProvisional = finalDecodeRate !== null
         ? finalDecodeIsProvisional
