@@ -970,7 +970,7 @@
             (reportedCompletionTokens - lastTimingPredictedTokens) * 1000
               / (predictedMs - lastTimingPredictedMs),
             false,
-            eventTime,
+            at,
           );
         }
         if (reportedCompletionTokens !== null && Number.isFinite(predictedMs) && predictedMs > 0) {
