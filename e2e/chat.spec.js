@@ -221,11 +221,11 @@ test("keeps llama.cpp's cumulative decode rate ahead of an MTP batch sample", as
   await page.locator("#sendBtn").click();
 
   await expect(page.locator(".msg.assistant").last()).toContainText("MTP timing still same batch.");
-  // The final verification batch is 120 tok/s (3 tokens / 25 ms), while
-  // llama.cpp reports the overall 4-token decode rate as 53.3 tok/s.
+  // The final verification batch is 120 tok/s (3 tokens / 25 ms), but the
+  // current trend uses a 250 ms rolling window: 4 tokens / 75 ms = 53.3.
   await expect(page.locator("#decodeSpeed")).toHaveText("53.3 tok/s");
-  await expect(page.locator("#decodeChartCurrent")).toHaveText("120 tok/s");
-  await expect(page.locator("#peakDecodeSpeed")).toHaveText("120 tok/s");
+  await expect(page.locator("#decodeChartCurrent")).toHaveText("53.3 tok/s");
+  await expect(page.locator("#peakDecodeSpeed")).toHaveText("53.3 tok/s");
   await expect(page.locator("#meanDecodeSpeed")).toHaveText("53.3 tok/s");
 });
 
