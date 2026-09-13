@@ -194,7 +194,7 @@
       frameworkAuto: "自动检测",
       frameworkUniversal: "通用",
       benchmarkMetrics: "性能指标",
-      promptThroughput: "预填充速度 Prefill Speed",
+      promptThroughput: "预填充速度",
       decodeSpeed: "解码速度",
       peakDecodeSpeed: "最高 95%",
       midDecodeSpeed: "中位 50%",
