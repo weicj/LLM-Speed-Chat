@@ -50,7 +50,6 @@
   const decodeDetailsToggleEl = el("decodeDetailsToggle");
   const decodeDetailsContentEl = el("decodeDetailsContent");
   const decodeChart = el("decodeChart");
-  const decodeChartCurrentEl = el("decodeChartCurrent");
   const decodeChartMaxEl = el("decodeChartMax");
   const decodeChartMinEl = el("decodeChartMin");
   const decodeSampleCountEl = el("decodeSampleCount");
@@ -282,6 +281,8 @@
   let latestDecodeTTFTSeconds = 0;
   let latestDecodeDurationSeconds = 0;
   let latestDecodeComplete = false;
+  let latestDecodeThinkingStartSeconds = null;
+  let latestDecodeAnswerStartSeconds = null;
 
   apiBaseUrlEl.value = storage.getItem(upstreamStorageKey) || CONFIG.upstream_base_url || "";
   apiKeyEl.value = session.getItem(apiKeyStorageKey) || "";
@@ -614,10 +615,12 @@
     latestDecodeTTFTSeconds = Number(metrics.ttft_s) || 0;
     latestDecodeDurationSeconds = Number(metrics.decode_duration_s) || 0;
     latestDecodeComplete = metrics.decode_complete === true;
-    decodeChartCurrentEl.textContent = formatRate(
-      metrics.live_decode_tok_s ?? metrics.decode_tok_s,
-      metrics.live_decode_provisional ?? metrics.decode_provisional,
-    );
+    latestDecodeThinkingStartSeconds = Number.isFinite(metrics.thinking_start_s)
+      ? metrics.thinking_start_s
+      : null;
+    latestDecodeAnswerStartSeconds = Number.isFinite(metrics.answer_start_s)
+      ? metrics.answer_start_s
+      : null;
     decodeSampleCountEl.textContent = String(latestDecodeSamples.length);
     decodeChartEmptyEl.hidden = latestDecodeSamples.length > 0;
     const phases = metrics.phases || {};
@@ -672,9 +675,18 @@
 
     const minimum = Math.min(...rates);
     const maximum = Math.max(...rates);
-    const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1);
+    const sortedRates = [...rates].sort((left, right) => left - right);
+    const p95Index = Math.min(
+      sortedRates.length - 1,
+      Math.max(0, Math.ceil(sortedRates.length * 0.95) - 1),
+    );
+    const p95Rate = sortedRates[p95Index];
+    const scaleMaximum = latestDecodeComplete ? p95Rate : maximum;
+    const padding = Math.max((scaleMaximum - minimum) * 0.15, scaleMaximum * 0.05, 1);
     const lower = Math.max(0, minimum - padding);
-    const upper = maximum + padding;
+    const upper = latestDecodeComplete
+      ? Math.max(scaleMaximum, lower + 1)
+      : maximum + padding;
     const averageRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
     const wallTime = Math.max(latestDecodeWallSeconds, rawSamples.at(-1).elapsed || 0, 0.1);
     decodeChartMaxEl.textContent = formatRate(upper);
@@ -701,36 +713,51 @@
       const x = latestDecodeComplete
         ? plotLeft + plotWidth * Math.min(1, Math.max(0, (sample.elapsed || 0) / wallTime))
         : plotRight - plotWidth * (collection.length - 1 - index) / (liveWindowSize - 1);
+      const visibleRate = Math.min(upper, Math.max(lower, sample.rate));
       return {
         x,
-        y: plotBottom - (sample.rate - lower) / (upper - lower) * plotHeight,
+        y: plotBottom - (visibleRate - lower) / (upper - lower) * plotHeight,
       };
     };
-    const firstPoint = pointAt(samples[0], 0);
-    context.beginPath();
-    context.moveTo(firstPoint.x, plotBottom);
-    samples.forEach((sample, index) => {
-      const point = pointAt(sample, index);
-      context.lineTo(point.x, point.y);
-    });
-    context.lineTo(pointAt(samples.at(-1), samples.length - 1).x, plotBottom);
-    context.closePath();
-    context.fillStyle = isDark ? "rgba(96,165,250,.18)" : "rgba(37,99,235,.12)";
-    context.fill();
+    const thinkingEnd = latestDecodeAnswerStartSeconds;
+    const isThinkingPoint = (sample) => latestDecodeComplete
+      && thinkingEnd !== null
+      && (sample.elapsed || 0) < thinkingEnd;
+    const drawSegment = (segment, stroke, fill) => {
+      if (!segment.length) return;
+      const points = segment.map(({sample, index}) => pointAt(sample, index));
+      context.beginPath();
+      context.moveTo(points[0].x, plotBottom);
+      points.forEach((point) => context.lineTo(point.x, point.y));
+      context.lineTo(points.at(-1).x, plotBottom);
+      context.closePath();
+      context.fillStyle = fill;
+      context.fill();
+      context.beginPath();
+      points.forEach((point, pointIndex) => {
+        if (pointIndex === 0) context.moveTo(point.x, point.y);
+        else context.lineTo(point.x, point.y);
+      });
+      context.strokeStyle = stroke;
+      context.lineWidth = 1.75;
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      context.stroke();
+    };
+    const blueStroke = isDark ? "#60a5fa" : "#2563eb";
+    const blueFill = isDark ? "rgba(96,165,250,.18)" : "rgba(37,99,235,.12)";
+    const pinkStroke = isDark ? "#f472b6" : "#db2777";
+    const pinkFill = isDark ? "rgba(244,114,182,.20)" : "rgba(219,39,119,.13)";
+    if (latestDecodeComplete && thinkingEnd !== null) {
+      const thinkingSegment = samples.map((sample, index) => ({sample, index})).filter(({sample}) => isThinkingPoint(sample));
+      const answerSegment = samples.map((sample, index) => ({sample, index})).filter(({sample}) => !isThinkingPoint(sample));
+      drawSegment(thinkingSegment, pinkStroke, pinkFill);
+      drawSegment(answerSegment, blueStroke, blueFill);
+    } else {
+      drawSegment(samples.map((sample, index) => ({sample, index})), blueStroke, blueFill);
+    }
 
-    context.beginPath();
-    samples.forEach((sample, index) => {
-      const point = pointAt(sample, index);
-      if (index === 0) context.moveTo(point.x, point.y);
-      else context.lineTo(point.x, point.y);
-    });
-    context.strokeStyle = isDark ? "#60a5fa" : "#2563eb";
-    context.lineWidth = 1.75;
-    context.lineJoin = "round";
-    context.lineCap = "round";
-    context.stroke();
-
-    const averageY = plotBottom - (averageRate - lower) / (upper - lower) * plotHeight;
+    const averageY = plotBottom - (Math.min(upper, Math.max(lower, averageRate)) - lower) / (upper - lower) * plotHeight;
     context.beginPath();
     context.setLineDash([5, 4]);
     context.moveTo(plotLeft, averageY);
@@ -800,6 +827,14 @@
       plotRight,
       height - 2,
     );
+
+    if (latestDecodeComplete && thinkingEnd !== null) {
+      context.textAlign = "left";
+      context.fillStyle = pinkStroke;
+      context.fillText("Thinking", plotLeft + 3, plotTop + 11);
+      context.fillStyle = blueStroke;
+      context.fillText("Answer", plotLeft + 54, plotTop + 11);
+    }
 
     const finalPoint = pointAt(samples.at(-1), samples.length - 1);
     context.beginPath();
@@ -1152,6 +1187,12 @@
       const answerSeconds = firstAnswerAt === null
         ? null
         : Math.max(0, ((finishedAt ?? currentTime) - firstAnswerAt) / 1000);
+      const thinkingStartSeconds = firstReasoningAt === null
+        ? null
+        : Math.max(0, (firstReasoningAt - startedAt) / 1000);
+      const answerStartSeconds = firstAnswerAt === null
+        ? null
+        : Math.max(0, (firstAnswerAt - startedAt) / 1000);
       const phase = (tokens, seconds, provisional) => ({
         tokens: tokens > 0 ? tokens : null,
         seconds,
@@ -1180,6 +1221,8 @@
         low_decode_provisional: decodeRateStats.lowProvisional,
         decode_samples: decodeRateSamples,
         decode_complete: finishedAt !== null,
+        thinking_start_s: thinkingStartSeconds,
+        answer_start_s: answerStartSeconds,
         completion_provisional: completionTokens === null,
         phases: {
           thinking: phase(reasoningTokens, reasoningSeconds, !reasoningTokensExact),
@@ -1251,7 +1294,8 @@
     latestDecodeTTFTSeconds = 0;
     latestDecodeDurationSeconds = 0;
     latestDecodeComplete = false;
-    decodeChartCurrentEl.textContent = "--";
+    latestDecodeThinkingStartSeconds = null;
+    latestDecodeAnswerStartSeconds = null;
     decodeChartMaxEl.textContent = "--";
     decodeChartMinEl.textContent = "--";
     decodeSampleCountEl.textContent = "0";
