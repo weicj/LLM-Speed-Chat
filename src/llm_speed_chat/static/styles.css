@@ -530,6 +530,10 @@ body{
   background:#2563eb;
 }
 
+.legendThinking{
+  background:#db2777;
+}
+
 .legendAverage{
   background:#b45309;
   border-top:1px dashed #b45309;
