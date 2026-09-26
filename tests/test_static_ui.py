@@ -29,6 +29,7 @@ class StaticUiTest(unittest.TestCase):
         self.assertIn('id="cancelBtn"', source)
         self.assertIn('id="clearBtn"', source)
         self.assertIn('id="requestSizeHint"', source)
+        self.assertIn('id="promptTokens"', source)
         self.assertIn('id="promptThroughput"', source)
         self.assertIn('id="decodeSpeed"', source)
         self.assertIn('id="decodeChart"', source)
