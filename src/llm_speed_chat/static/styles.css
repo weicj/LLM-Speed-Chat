@@ -370,6 +370,26 @@ body{
   gap:16px;
 }
 
+.decodeDetailsToggle{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  padding:0;
+  border:1px solid #d8dee8;
+  border-radius:8px;
+  background:#fff;
+  color:#475467;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.decodeDetailsToggle:hover{
+  background:#f8fafc;
+}
+
 .decodeDetailsTitle{
   margin:0;
   font-size:14px;
@@ -902,6 +922,16 @@ html[data-theme="dark"] .decodeDetailsPanel{
 html[data-theme="dark"] .phaseMetric{
   border-color:#303a48;
   background:#18212d;
+}
+
+html[data-theme="dark"] .decodeDetailsToggle{
+  border-color:#3b4758;
+  background:#18212d;
+  color:#cbd5e1;
+}
+
+html[data-theme="dark"] .decodeDetailsToggle:hover{
+  background:#202c3b;
 }
 
 html[data-theme="dark"] .decodeDetailsSubtitle,

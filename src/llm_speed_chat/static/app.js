@@ -47,6 +47,8 @@
   const meanDecodeSpeedEl = el("meanDecodeSpeed");
   const lowDecodeSpeedEl = el("lowDecodeSpeed");
   const decodeDetailsEl = el("decodeDetails");
+  const decodeDetailsToggleEl = el("decodeDetailsToggle");
+  const decodeDetailsContentEl = el("decodeDetailsContent");
   const decodeChart = el("decodeChart");
   const decodeChartCurrentEl = el("decodeChartCurrent");
   const decodeChartMaxEl = el("decodeChartMax");
@@ -132,6 +134,7 @@
       lowDecodeSpeed: "Low 5%",
       decodeTrend: "Decode Speed Trend",
       decodeTrendHint: "Live samples from the current response",
+      decodeDetailsToggleTitle: "Expand decode details",
       currentDecodeSpeed: "Current",
       overallDecodeSpeed: "Overall Decode Speed",
       decodeSamples: "Samples",
@@ -216,6 +219,7 @@
       lowDecodeSpeed: "最低 5%",
       decodeTrend: "解码速度趋势",
       decodeTrendHint: "当前响应的实时采样",
+      decodeDetailsToggleTitle: "展开解码详情",
       currentDecodeSpeed: "当前",
       overallDecodeSpeed: "总体解码速度",
       decodeSamples: "采样数",
@@ -2082,6 +2086,13 @@
   });
 
   clearBtn.addEventListener("click", clearConversation);
+
+  decodeDetailsToggleEl.addEventListener("click", () => {
+    const expanded = decodeDetailsToggleEl.getAttribute("aria-expanded") === "true";
+    decodeDetailsToggleEl.setAttribute("aria-expanded", String(!expanded));
+    decodeDetailsContentEl.hidden = expanded;
+    decodeDetailsToggleEl.querySelector("span").textContent = expanded ? "⌄" : "⌃";
+  });
 
   window.addEventListener("resize", drawDecodeChart);
 

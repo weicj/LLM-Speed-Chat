@@ -121,7 +121,11 @@
             <span class="label" data-i18n="currentDecodeSpeed">Current Decode Speed</span>
             <strong id="decodeChartCurrent">--</strong>
           </div>
+          <button class="decodeDetailsToggle" id="decodeDetailsToggle" type="button" aria-controls="decodeDetailsContent" aria-expanded="false" data-i18n-title="decodeDetailsToggleTitle" title="Expand decode details">
+            <span aria-hidden="true">⌄</span>
+          </button>
         </div>
+        <div id="decodeDetailsContent" hidden>
         <div class="decodeChartFrame">
           <div class="decodeAxisLabel decodeAxisMax" id="decodeChartMax">--</div>
           <canvas class="decodeChart" id="decodeChart" role="img" data-i18n-aria-label="decodeTrend" aria-label="Decode Speed Trend"></canvas>
@@ -157,6 +161,7 @@
               <span><b class="label" data-i18n="phaseSpeed">Speed</b><strong id="answerSpeed">--</strong></span>
             </div>
           </div>
+        </div>
         </div>
       </section>
 
