@@ -409,6 +409,12 @@ test("keeps streamed reasoning in its own five-line scrolling bubble", async ({ 
   expect(await reasoning.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
   await expect(page.locator(".msg.assistant").last().locator(".messageBody")).toHaveText("Answer after thinking.");
   await expect(page.locator(".msg.assistant").last()).not.toContainText("Line one");
+  await expect(page.locator("#thinkingTokens")).not.toHaveText("--");
+  await expect(page.locator("#thinkingTime")).toContainText("s");
+  await expect(page.locator("#thinkingSpeed")).toContainText("tok/s");
+  await expect(page.locator("#answerTokens")).not.toHaveText("--");
+  await expect(page.locator("#answerTime")).toContainText("s");
+  await expect(page.locator("#answerSpeed")).toContainText("tok/s");
 });
 
 test("renders vLLM reasoning stream fields in the thinking panel", async ({ page }) => {

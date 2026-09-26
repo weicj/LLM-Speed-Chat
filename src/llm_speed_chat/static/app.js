@@ -52,6 +52,12 @@
   const decodeChartMinEl = el("decodeChartMin");
   const decodeSampleCountEl = el("decodeSampleCount");
   const decodeChartEmptyEl = el("decodeChartEmpty");
+  const thinkingTokensEl = el("thinkingTokens");
+  const thinkingTimeEl = el("thinkingTime");
+  const thinkingSpeedEl = el("thinkingSpeed");
+  const answerTokensEl = el("answerTokens");
+  const answerTimeEl = el("answerTime");
+  const answerSpeedEl = el("answerSpeed");
   const tokensEl = el("tokens");
   const ttftEl = el("ttft");
   const wallTimeEl = el("wallTime");
@@ -134,6 +140,11 @@
       decodePeakMarker: "Peak",
       decodeLowMarker: "Low",
       decodeDuration: "Decode",
+      thinkingMetrics: "Thinking / Reasoning",
+      answerMetrics: "Final Answer",
+      phaseTokens: "Tokens",
+      phaseTime: "Time",
+      phaseSpeed: "Speed",
       generatedTokens: "Generated Tokens",
       ttft: "Time to First Token",
       wallTime: "Wall Time",
@@ -212,6 +223,11 @@
       decodePeakMarker: "最高",
       decodeLowMarker: "最低",
       decodeDuration: "解码",
+      thinkingMetrics: "思考 / 推理",
+      answerMetrics: "最终正文",
+      phaseTokens: "Token 数",
+      phaseTime: "耗时",
+      phaseSpeed: "速度",
       generatedTokens: "生成 Token 数",
       ttft: "首字到达时间",
       wallTime: "总耗时",
@@ -562,6 +578,15 @@
     return `${seconds >= 10 ? seconds.toFixed(1) : seconds.toFixed(2)}s`;
   }
 
+  function formatPhaseTokens(value, provisional = false) {
+    if (!Number.isFinite(value) || value < 0) return "--";
+    return `${provisional ? "~" : ""}${Math.trunc(value)}`;
+  }
+
+  function formatPhaseSpeed(value, provisional = false) {
+    return formatRate(value, provisional);
+  }
+
   function updateMetrics(metrics) {
     promptThroughputEl.textContent = formatRate(metrics.prompt_tok_s, metrics.prompt_provisional);
     decodeSpeedEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
@@ -585,6 +610,15 @@
     );
     decodeSampleCountEl.textContent = String(latestDecodeSamples.length);
     decodeChartEmptyEl.hidden = latestDecodeSamples.length > 0;
+    const phases = metrics.phases || {};
+    const thinking = phases.thinking || {};
+    const answer = phases.answer || {};
+    thinkingTokensEl.textContent = formatPhaseTokens(thinking.tokens, thinking.provisional);
+    thinkingTimeEl.textContent = formatDuration(thinking.seconds);
+    thinkingSpeedEl.textContent = formatPhaseSpeed(thinking.tok_s, thinking.provisional);
+    answerTokensEl.textContent = formatPhaseTokens(answer.tokens, answer.provisional);
+    answerTimeEl.textContent = formatDuration(answer.seconds);
+    answerSpeedEl.textContent = formatPhaseSpeed(answer.tok_s, answer.provisional);
     drawDecodeChart();
   }
 
@@ -838,6 +872,14 @@
     let hasServerDecodeTimings = false;
     let firstDecodeAt = null;
     let lastDecodeAt = null;
+    let reasoningTokens = 0;
+    let answerTokens = 0;
+    let reasoningTokensExact = false;
+    let answerTokensExact = false;
+    let firstReasoningAt = null;
+    let firstAnswerAt = null;
+    let lastReasoningAt = null;
+    let lastAnswerAt = null;
     let streamedCompletionTokens = 0;
 
     function now() {
@@ -1094,6 +1136,18 @@
         ? finalDecodeIsProvisional
         : latestServerDecodeRate === null && (liveDecodeRate === null || liveDecodeIsProvisional);
       const decodeRateStats = decodeRateSummary();
+      const reasoningSeconds = firstReasoningAt === null
+        ? null
+        : Math.max(0, ((firstAnswerAt ?? currentTime) - firstReasoningAt) / 1000);
+      const answerSeconds = firstAnswerAt === null
+        ? null
+        : Math.max(0, ((finishedAt ?? currentTime) - firstAnswerAt) / 1000);
+      const phase = (tokens, seconds, provisional) => ({
+        tokens: tokens > 0 ? tokens : null,
+        seconds,
+        tok_s: seconds && seconds > 0 && tokens > 0 ? tokens / seconds : null,
+        provisional,
+      });
       updateMetrics({
         prompt_tok_s: promptTokS,
         decode_tok_s: decodeTokS,
@@ -1116,6 +1170,10 @@
         decode_samples: decodeRateSamples,
         decode_complete: finishedAt !== null,
         completion_provisional: completionTokens === null,
+        phases: {
+          thinking: phase(reasoningTokens, reasoningSeconds, !reasoningTokensExact),
+          answer: phase(answerTokens, answerSeconds, !answerTokensExact),
+        },
       });
     }
 
@@ -1131,6 +1189,23 @@
 
         const reasoningPiece = typeof pieces.reasoning === "string" ? pieces.reasoning : "";
         const contentPiece = typeof pieces.content === "string" ? pieces.content : "";
+        const pieceTokenCount = choice && countTokenIds(choice.token_ids);
+        const estimatedReasoningTokens = estimateTextTokens(reasoningPiece);
+        const estimatedAnswerTokens = estimateTextTokens(contentPiece);
+        if (reasoningPiece || estimatedReasoningTokens > 0) {
+          if (firstReasoningAt === null) firstReasoningAt = eventTime;
+          lastReasoningAt = eventTime;
+          const hasExactReasoningTokens = pieceTokenCount !== null && pieceTokenCount > 0 && !contentPiece;
+          reasoningTokens += hasExactReasoningTokens ? pieceTokenCount : estimatedReasoningTokens;
+          reasoningTokensExact = reasoningTokensExact || hasExactReasoningTokens;
+        }
+        if (contentPiece || estimatedAnswerTokens > 0) {
+          if (firstAnswerAt === null) firstAnswerAt = eventTime;
+          lastAnswerAt = eventTime;
+          const hasExactAnswerTokens = pieceTokenCount !== null && pieceTokenCount > 0 && !reasoningPiece;
+          answerTokens += hasExactAnswerTokens ? pieceTokenCount : estimatedAnswerTokens;
+          answerTokensExact = answerTokensExact || hasExactAnswerTokens;
+        }
         const generatedTokenIds = choice && countTokenIds(choice.token_ids);
         if (firstContentAt === null && (reasoningPiece || contentPiece || (generatedTokenIds || 0) > 0)) {
           firstContentAt = eventTime;
@@ -1169,6 +1244,12 @@
     decodeChartMinEl.textContent = "--";
     decodeSampleCountEl.textContent = "0";
     decodeChartEmptyEl.hidden = false;
+    thinkingTokensEl.textContent = "--";
+    thinkingTimeEl.textContent = "--";
+    thinkingSpeedEl.textContent = "--";
+    answerTokensEl.textContent = "--";
+    answerTimeEl.textContent = "--";
+    answerSpeedEl.textContent = "--";
     drawDecodeChart();
     tokensEl.textContent = "--";
     ttftEl.textContent = "--";

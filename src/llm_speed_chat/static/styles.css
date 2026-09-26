@@ -462,6 +462,47 @@ body{
   gap:5px;
 }
 
+.phaseDetails{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+
+.phaseMetric{
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid #e4e7ec;
+  border-radius:8px;
+  background:#f8fafc;
+}
+
+.phaseMetricTitle{
+  margin:0 0 8px;
+  font-size:12px;
+  font-weight:750;
+}
+
+.phaseMetricValues{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+
+.phaseMetricValues > span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+.phaseMetricValues strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  font-variant-numeric:tabular-nums;
+}
+
 .legendSwatch{
   width:16px;
   height:2px;
@@ -858,6 +899,11 @@ html[data-theme="dark"] .decodeDetailsPanel{
   box-shadow:0 8px 24px rgba(0,0,0,.3);
 }
 
+html[data-theme="dark"] .phaseMetric{
+  border-color:#303a48;
+  background:#18212d;
+}
+
 html[data-theme="dark"] .decodeDetailsSubtitle,
 html[data-theme="dark"] .decodeAxisLabel,
 html[data-theme="dark"] .decodeChartEmpty,
@@ -1058,6 +1104,10 @@ html[data-theme="dark"] .btn:disabled{
   .decodeDetailsPanelHeader{
     flex-direction:column;
     gap:8px;
+  }
+
+  .phaseDetails{
+    grid-template-columns:1fr;
   }
 
   .decodeChartCurrent{
