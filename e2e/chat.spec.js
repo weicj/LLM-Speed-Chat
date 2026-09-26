@@ -68,6 +68,7 @@ test("loads models and streams a chat response with live metrics", async ({ page
   await expect(page.locator(".msg.user").last()).toContainText("hello browser");
   await expect(page.locator(".msg.assistant").last()).toContainText("Hello from the browser test.");
   await expect(page.locator("#promptThroughput")).toContainText("tok/s");
+  await expect(page.locator("#promptTokens")).not.toHaveText("--");
   await expect(page.locator("#decodeSpeed")).toContainText("tok/s");
   await expect(page.locator("#peakDecodeSpeed")).toContainText("tok/s");
   await expect(page.locator("#lowDecodeSpeed")).toContainText("tok/s");

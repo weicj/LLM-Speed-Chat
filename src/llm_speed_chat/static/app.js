@@ -39,6 +39,7 @@
   const metricBackendEl = el("metricBackend");
   const connectBtn = el("connectBtn");
   const apiStatusEl = el("apiStatus");
+  const promptTokensEl = el("promptTokens");
   const promptThroughputEl = el("promptThroughput");
   const decodeSpeedEl = el("decodeSpeed");
   const peakDecodeSpeedEl = el("peakDecodeSpeed");
@@ -122,6 +123,7 @@
       frameworkAuto: "Auto-detected",
       frameworkUniversal: "Universal",
       benchmarkMetrics: "Benchmark Metrics",
+      promptTokens: "Prompt Tokens",
       promptThroughput: "Prefill Speed",
       decodeSpeed: "Decode Speed",
       peakDecodeSpeed: "Peak 95%",
@@ -205,6 +207,7 @@
       frameworkAuto: "自动检测",
       frameworkUniversal: "通用",
       benchmarkMetrics: "性能指标",
+      promptTokens: "提示词 Token 数",
       promptThroughput: "预填充速度",
       decodeSpeed: "解码速度",
       peakDecodeSpeed: "最高 95%",
@@ -588,6 +591,9 @@
   }
 
   function updateMetrics(metrics) {
+    promptTokensEl.textContent = Number.isFinite(metrics.prompt_tokens)
+      ? `${metrics.prompt_provisional ? "~" : ""}${Math.trunc(metrics.prompt_tokens)}`
+      : "--";
     promptThroughputEl.textContent = formatRate(metrics.prompt_tok_s, metrics.prompt_provisional);
     decodeSpeedEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
     peakDecodeSpeedEl.textContent = formatRate(metrics.peak_decode_tok_s, metrics.peak_decode_provisional);
@@ -1149,6 +1155,7 @@
         provisional,
       });
       updateMetrics({
+        prompt_tokens: visiblePromptTokens,
         prompt_tok_s: promptTokS,
         decode_tok_s: decodeTokS,
         live_decode_tok_s: liveDecodeRate,
@@ -1228,6 +1235,7 @@
   }
 
   function resetMetrics() {
+    promptTokensEl.textContent = "--";
     promptThroughputEl.textContent = "--";
     decodeSpeedEl.textContent = "--";
     peakDecodeSpeedEl.textContent = "--";
