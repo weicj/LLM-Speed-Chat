@@ -319,15 +319,29 @@ body{
 .advancedGrid{
   grid-column:1 / -1;
   display:grid;
-  grid-template-columns:minmax(200px,1.25fr) repeat(4,minmax(0,1fr));
+  grid-template-columns:minmax(260px,2fr) minmax(150px,1fr) minmax(200px,1.25fr) minmax(127px,auto);
   gap:12px;
   padding-top:12px;
   border-top:1px solid #eaecf0;
 }
 
+.frameworkAdvancedCell{
+  display:flex;
+  align-items:end;
+  gap:8px;
+  min-width:0;
+}
+
+.frameworkAdvancedCell > .field{
+  flex:0 1 249px;
+  max-width:249px;
+  min-width:0;
+}
+
 .advancedOptionsToggle{
   align-self:end;
-  justify-self:start;
+  flex:0 0 auto;
+  margin-left:auto;
   width:max-content;
   max-width:100%;
   height:40px;
