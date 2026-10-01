@@ -45,6 +45,13 @@
   const minPDefaultEl = el("minPDefault");
   const advancedOptionsToggleEl = el("advancedOptionsToggle");
   const advancedOptionsContentEl = el("advancedOptionsContent");
+  const advancedModeLabelEl = el("advancedModeLabel");
+  const parameterModeLabels = new Map([
+    [thinkingBudgetDefaultEl, el("thinkingBudgetModeLabel")],
+    [topPDefaultEl, el("topPModeLabel")],
+    [topKDefaultEl, el("topKModeLabel")],
+    [minPDefaultEl, el("minPModeLabel")],
+  ]);
   const metricBackendEl = el("metricBackend");
   const connectBtn = el("connectBtn");
   const apiStatusEl = el("apiStatus");
@@ -134,6 +141,7 @@
       topKTitle: "-1 means disabled",
       minP: "Min-P",
       parameterDefault: "Default",
+      parameterCustom: "Custom",
       framework: "Framework",
       frameworkTitle: "Detected from the model list. Select a framework to override.",
       frameworkAuto: "Auto-detected",
@@ -226,6 +234,7 @@
       topKTitle: "-1 表示关闭",
       minP: "Min-P",
       parameterDefault: "默认",
+      parameterCustom: "自定义",
       framework: "推理框架",
       frameworkTitle: "从模型列表中检测；可手动覆盖。",
       frameworkAuto: "自动检测",
@@ -433,6 +442,15 @@
     return TRANSLATIONS[language][key] || TRANSLATIONS.en[key] || key;
   }
 
+  function updateAdvancedOptionsUI() {
+    const custom = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
+    advancedOptionsContentEl.hidden = !custom;
+    advancedModeLabelEl.textContent = t(custom ? "parameterCustom" : "parameterDefault");
+    for (const [toggle, label] of parameterModeLabels) {
+      label.textContent = t(toggle.checked ? "parameterDefault" : "parameterCustom");
+    }
+  }
+
   function refreshActionButton(button) {
     const label = t(button.dataset.action);
     button.dataset.label = label;
@@ -461,6 +479,7 @@
       node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
       node.title = t(node.dataset.i18nAriaLabel);
     }
+    updateAdvancedOptionsUI();
     for (const button of document.querySelectorAll(".messageAction, .codeCopyButton, .codeSaveButton")) {
       refreshActionButton(button);
     }
@@ -1751,14 +1770,17 @@
         : CONFIG.defaultTemperature,
     };
 
-    const budget = thinkingBudgetTokens();
-    if (reasoningEnabled() && !thinkingBudgetDefaultEl.checked) payload.thinking_budget_tokens = budget;
-    const topP = Number(topPEl.value);
-    const topK = Math.trunc(Number(topKEl.value));
-    const minP = Number(minPEl.value);
-    if (!topPDefaultEl.checked && Number.isFinite(topP) && topP >= 0 && topP <= 1) payload.top_p = topP;
-    if (!topKDefaultEl.checked && Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
-    if (!minPDefaultEl.checked && Number.isFinite(minP) && minP >= 0 && minP <= 1) payload.min_p = minP;
+    const advancedCustom = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
+    if (advancedCustom) {
+      const budget = thinkingBudgetTokens();
+      if (reasoningEnabled() && !thinkingBudgetDefaultEl.checked) payload.thinking_budget_tokens = budget;
+      const topP = Number(topPEl.value);
+      const topK = Math.trunc(Number(topKEl.value));
+      const minP = Number(minPEl.value);
+      if (!topPDefaultEl.checked && Number.isFinite(topP) && topP >= 0 && topP <= 1) payload.top_p = topP;
+      if (!topKDefaultEl.checked && Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
+      if (!minPDefaultEl.checked && Number.isFinite(minP) && minP >= 0 && minP <= 1) payload.min_p = minP;
+    }
 
     // ExLlama's OpenAI-compatible server reads this template switch at top level.
     if (isExLlamaEndpoint) {
@@ -1823,6 +1845,7 @@
     topPDefaultEl.disabled = isRunning;
     topKDefaultEl.disabled = isRunning;
     minPDefaultEl.disabled = isRunning;
+    advancedOptionsToggleEl.disabled = isRunning;
     metricBackendEl.disabled = isRunning;
   }
 
@@ -2255,15 +2278,19 @@
   for (const [control, defaultToggle] of parameterControls) {
     control.addEventListener("input", () => {
       defaultToggle.checked = false;
+      updateAdvancedOptionsUI();
       renderRequestSizeHint();
     });
-    defaultToggle.addEventListener("change", renderRequestSizeHint);
+    defaultToggle.addEventListener("change", () => {
+      updateAdvancedOptionsUI();
+      renderRequestSizeHint();
+    });
   }
   advancedOptionsToggleEl.addEventListener("click", () => {
     const expanded = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
     advancedOptionsToggleEl.setAttribute("aria-expanded", String(!expanded));
-    advancedOptionsContentEl.hidden = expanded;
-    advancedOptionsToggleEl.querySelector(".advancedOptionsIcon").textContent = expanded ? "⌄" : "⌃";
+    updateAdvancedOptionsUI();
+    renderRequestSizeHint();
   });
   metricBackendEl.addEventListener("change", () => {
     persistConnectionState();
