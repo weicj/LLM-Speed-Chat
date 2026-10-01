@@ -47,23 +47,17 @@
         </label>
         <button class="btn secondary detectModels" id="connectBtn" type="button" data-i18n="detectModels">Detect Models</button>
         <div class="advancedGrid" data-i18n-aria-label="advancedSettings" aria-label="Advanced Generation Settings">
-          <div class="frameworkAdvancedCell">
-            <label class="field" for="metricBackend">
-              <span class="fieldLabel" data-i18n="framework">Framework</span>
-              <select id="metricBackend" data-i18n-title="frameworkTitle" title="Detected from the model list. Select a framework to override.">
-                <option value="auto" data-i18n="frameworkAuto">Auto-detected</option>
-                <option value="llamacpp">llama.cpp</option>
-                <option value="vllm">vLLM</option>
-                <option value="sglang">SGLang</option>
-                <option value="exllama">ExLlama</option>
-                <option value="universal" data-i18n="frameworkUniversal">Universal</option>
-              </select>
-            </label>
-            <button class="btn secondary advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
-              <span data-i18n="advancedParameters">Advanced</span>
-              <span class="advancedOptionsIcon" aria-hidden="true">⌄</span>
-            </button>
-          </div>
+          <label class="field" for="metricBackend">
+            <span class="fieldLabel" data-i18n="framework">Framework</span>
+            <select id="metricBackend" data-i18n-title="frameworkTitle" title="Detected from the model list. Select a framework to override.">
+              <option value="auto" data-i18n="frameworkAuto">Auto-detected</option>
+              <option value="llamacpp">llama.cpp</option>
+              <option value="vllm">vLLM</option>
+              <option value="sglang">SGLang</option>
+              <option value="exllama">ExLlama</option>
+              <option value="universal" data-i18n="frameworkUniversal">Universal</option>
+            </select>
+          </label>
           <label class="field" for="maxTokens">
             <span class="fieldLabel" data-i18n="maxTokens">Max Tokens</span>
             <input id="maxTokens" type="number" min="1" step="1">
@@ -83,6 +77,10 @@
               <option value="xhigh" data-i18n="reasoningEffortXHigh">XHigh</option>
             </select>
           </label>
+          <button class="btn secondary advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
+            <span data-i18n="advancedParameters">Advanced</span>
+            <span class="advancedOptionsIcon" aria-hidden="true">⌄</span>
+          </button>
           <div class="advancedOptionsContent" id="advancedOptionsContent" hidden>
               <label class="field" for="thinkingBudget">
                 <span class="fieldLabel" data-i18n="thinkingBudget">Reasoning Budget</span>
