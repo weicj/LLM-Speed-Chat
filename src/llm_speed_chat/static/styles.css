@@ -328,7 +328,8 @@ body{
 .advancedOptionsToggle{
   align-self:end;
   justify-self:start;
-  width:auto;
+  width:max-content;
+  max-width:100%;
   height:40px;
   min-height:40px;
   box-sizing:border-box;

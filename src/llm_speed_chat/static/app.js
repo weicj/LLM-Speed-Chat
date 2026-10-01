@@ -134,7 +134,7 @@
       reasoningEffortXHigh: "XHigh",
       thinkingBudget: "Reasoning Budget",
       thinkingBudgetTitle: "0 means unlimited reasoning",
-      advancedParameters: "Advanced Parameters",
+      advancedParameters: "Advanced",
       topP: "Top-P",
       topK: "Top-K",
       topKTitle: "-1 means disabled",
