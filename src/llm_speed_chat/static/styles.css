@@ -319,7 +319,7 @@ body{
 .advancedGrid{
   grid-column:1 / -1;
   display:grid;
-  grid-template-columns:24.66% 19.73% 24.67% 13.66% 12.57%;
+  grid-template-columns:24.66% 13.66% 19.73% 24.67% 12.57%;
   gap:12px;
   padding-top:12px;
   border-top:1px solid #eaecf0;

@@ -58,14 +58,6 @@
               <option value="universal" data-i18n="frameworkUniversal">Universal</option>
             </select>
           </label>
-          <label class="field" for="maxTokens">
-            <span class="fieldLabel" data-i18n="maxTokens">Max Tokens</span>
-            <input id="maxTokens" type="number" min="1" step="1">
-          </label>
-          <label class="field" for="temp">
-            <span class="fieldLabel" data-i18n="temperature">Temperature</span>
-            <input id="temp" type="number" min="0" step="0.1">
-          </label>
           <label class="field" for="reasoningEffort">
             <span class="fieldLabel" data-i18n="reasoningEffort">Reasoning Effort</span>
             <select id="reasoningEffort">
@@ -76,6 +68,14 @@
               <option value="high" data-i18n="reasoningEffortHigh">High</option>
               <option value="xhigh" data-i18n="reasoningEffortXHigh">XHigh</option>
             </select>
+          </label>
+          <label class="field" for="maxTokens">
+            <span class="fieldLabel" data-i18n="maxTokens">Max Tokens</span>
+            <input id="maxTokens" type="number" min="1" step="1">
+          </label>
+          <label class="field" for="temp">
+            <span class="fieldLabel" data-i18n="temperature">Temperature</span>
+            <input id="temp" type="number" min="0" step="0.1">
           </label>
           <button class="btn secondary advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
             <span data-i18n="advancedParameters">Advanced</span>
