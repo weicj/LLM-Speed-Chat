@@ -45,7 +45,6 @@
   const minPDefaultEl = el("minPDefault");
   const advancedOptionsToggleEl = el("advancedOptionsToggle");
   const advancedOptionsContentEl = el("advancedOptionsContent");
-  const advancedModeLabelEl = el("advancedModeLabel");
   const parameterModeLabels = new Map([
     [thinkingBudgetDefaultEl, el("thinkingBudgetModeLabel")],
     [topPDefaultEl, el("topPModeLabel")],
@@ -445,7 +444,7 @@
   function updateAdvancedOptionsUI() {
     const custom = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
     advancedOptionsContentEl.hidden = !custom;
-    advancedModeLabelEl.textContent = t(custom ? "parameterCustom" : "parameterDefault");
+    advancedOptionsToggleEl.querySelector(".advancedOptionsIcon").textContent = custom ? "⌃" : "⌄";
     for (const [toggle, label] of parameterModeLabels) {
       label.textContent = t(toggle.checked ? "parameterDefault" : "parameterCustom");
     }
