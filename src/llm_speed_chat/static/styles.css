@@ -327,9 +327,13 @@ body{
 
 .advancedOptionsToggle{
   align-self:end;
+  width:100%;
+  height:40px;
   min-height:40px;
+  box-sizing:border-box;
   display:flex;
   align-items:center;
+  justify-content:space-between;
   gap:7px;
   border:0;
   background:transparent;
@@ -337,7 +341,7 @@ body{
   cursor:pointer;
   font-size:12px;
   font-weight:700;
-  padding:0 10px;
+  padding:0 12px;
   border:1px solid #cfd7e3;
   border-radius:10px;
   background:#fff;
