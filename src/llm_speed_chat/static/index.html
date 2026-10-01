@@ -66,10 +66,6 @@
               <option value="xhigh" data-i18n="reasoningEffortXHigh">XHigh</option>
             </select>
           </label>
-          <label class="field" for="thinkingBudget">
-            <span class="fieldLabel" data-i18n="thinkingBudget">Reasoning Budget</span>
-            <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited reasoning">
-          </label>
           <label class="field" for="metricBackend">
             <span class="fieldLabel" data-i18n="framework">Framework</span>
             <select id="metricBackend" data-i18n-title="frameworkTitle" title="Detected from the model list. Select a framework to override.">
@@ -81,6 +77,29 @@
               <option value="universal" data-i18n="frameworkUniversal">Universal</option>
             </select>
           </label>
+          <div class="advancedOptions">
+            <button class="advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
+              <span data-i18n="advancedParameters">Advanced Parameters</span><span class="advancedOptionsIcon" aria-hidden="true">⌄</span>
+            </button>
+            <div class="advancedOptionsContent" id="advancedOptionsContent" hidden>
+              <label class="field" for="thinkingBudget">
+                <span class="fieldLabel" data-i18n="thinkingBudget">Reasoning Budget</span>
+                <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited reasoning">
+              </label>
+              <label class="field" for="topP">
+                <span class="fieldLabel" data-i18n="topP">Top-P</span>
+                <input id="topP" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="1">
+              </label>
+              <label class="field" for="topK">
+                <span class="fieldLabel" data-i18n="topK">Top-K</span>
+                <input id="topK" type="number" min="-1" step="1" inputmode="numeric" value="-1" data-i18n-title="topKTitle" title="-1 means disabled">
+              </label>
+              <label class="field" for="minP">
+                <span class="fieldLabel" data-i18n="minP">Min-P</span>
+                <input id="minP" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="0">
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -130,7 +149,7 @@
         </div>
         <div class="decodeChartLegend" aria-hidden="true">
           <span><i class="legendSwatch legendThinking"></i><span data-i18n="thinkingLabel">Thinking</span></span>
-          <span><i class="legendSwatch legendTrend"></i><span data-i18n="answerLabel">Answer</span></span>
+          <span><i class="legendSwatch legendTrend"></i><span data-i18n="decodeTrendLegend">Answer</span></span>
           <span><i class="legendSwatch legendAverage"></i><span data-i18n="decodeAverageLegend">Average</span></span>
           <span><i class="legendSwatch legendTtft"></i><span data-i18n="decodeTtftLegend">TTFT</span></span>
         </div>

@@ -325,6 +325,41 @@ body{
   border-top:1px solid #eaecf0;
 }
 
+.advancedOptions{
+  grid-column:1 / -1;
+  border-top:1px solid #eaecf0;
+  padding-top:10px;
+}
+
+.advancedOptionsToggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:0;
+  background:transparent;
+  color:#475467;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700;
+  padding:0;
+}
+
+.advancedOptionsIcon{
+  font-size:16px;
+  line-height:12px;
+}
+
+.advancedOptionsContent{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-top:12px;
+}
+
+.advancedOptionsContent[hidden]{
+  display:none;
+}
+
 .toggleControl{
   min-height:40px;
   display:flex;
