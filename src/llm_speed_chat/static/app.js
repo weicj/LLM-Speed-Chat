@@ -36,9 +36,13 @@
   const tempEl = el("temp");
   const reasoningEffortEl = el("reasoningEffort");
   const thinkingBudgetEl = el("thinkingBudget");
+  const thinkingBudgetDefaultEl = el("thinkingBudgetDefault");
   const topPEl = el("topP");
+  const topPDefaultEl = el("topPDefault");
   const topKEl = el("topK");
+  const topKDefaultEl = el("topKDefault");
   const minPEl = el("minP");
+  const minPDefaultEl = el("minPDefault");
   const advancedOptionsToggleEl = el("advancedOptionsToggle");
   const advancedOptionsContentEl = el("advancedOptionsContent");
   const metricBackendEl = el("metricBackend");
@@ -129,6 +133,7 @@
       topK: "Top-K",
       topKTitle: "-1 means disabled",
       minP: "Min-P",
+      parameterDefault: "Default",
       framework: "Framework",
       frameworkTitle: "Detected from the model list. Select a framework to override.",
       frameworkAuto: "Auto-detected",
@@ -220,6 +225,7 @@
       topK: "Top-K",
       topKTitle: "-1 表示关闭",
       minP: "Min-P",
+      parameterDefault: "默认",
       framework: "推理框架",
       frameworkTitle: "从模型列表中检测；可手动覆盖。",
       frameworkAuto: "自动检测",
@@ -1746,13 +1752,13 @@
     };
 
     const budget = thinkingBudgetTokens();
-    if (reasoningEnabled() && budget > 0) payload.thinking_budget_tokens = budget;
+    if (reasoningEnabled() && !thinkingBudgetDefaultEl.checked) payload.thinking_budget_tokens = budget;
     const topP = Number(topPEl.value);
     const topK = Math.trunc(Number(topKEl.value));
     const minP = Number(minPEl.value);
-    if (Number.isFinite(topP) && topP >= 0 && topP < 1) payload.top_p = topP;
-    if (Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
-    if (Number.isFinite(minP) && minP > 0) payload.min_p = minP;
+    if (!topPDefaultEl.checked && Number.isFinite(topP) && topP >= 0 && topP <= 1) payload.top_p = topP;
+    if (!topKDefaultEl.checked && Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
+    if (!minPDefaultEl.checked && Number.isFinite(minP) && minP >= 0 && minP <= 1) payload.min_p = minP;
 
     // ExLlama's OpenAI-compatible server reads this template switch at top level.
     if (isExLlamaEndpoint) {
@@ -1813,6 +1819,10 @@
     topPEl.disabled = isRunning;
     topKEl.disabled = isRunning;
     minPEl.disabled = isRunning;
+    thinkingBudgetDefaultEl.disabled = isRunning || !reasoningEnabled();
+    topPDefaultEl.disabled = isRunning;
+    topKDefaultEl.disabled = isRunning;
+    minPDefaultEl.disabled = isRunning;
     metricBackendEl.disabled = isRunning;
   }
 
@@ -2236,9 +2246,18 @@
     renderRequestSizeHint();
     renderControlState();
   });
-  thinkingBudgetEl.addEventListener("input", renderRequestSizeHint);
-  for (const control of [topPEl, topKEl, minPEl]) {
-    control.addEventListener("input", renderRequestSizeHint);
+  const parameterControls = [
+    [thinkingBudgetEl, thinkingBudgetDefaultEl],
+    [topPEl, topPDefaultEl],
+    [topKEl, topKDefaultEl],
+    [minPEl, minPDefaultEl],
+  ];
+  for (const [control, defaultToggle] of parameterControls) {
+    control.addEventListener("input", () => {
+      defaultToggle.checked = false;
+      renderRequestSizeHint();
+    });
+    defaultToggle.addEventListener("change", renderRequestSizeHint);
   }
   advancedOptionsToggleEl.addEventListener("click", () => {
     const expanded = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
