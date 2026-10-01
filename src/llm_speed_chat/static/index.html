@@ -77,28 +77,26 @@
               <option value="universal" data-i18n="frameworkUniversal">Universal</option>
             </select>
           </label>
-          <div class="advancedOptions">
-            <button class="advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
-              <span data-i18n="advancedParameters">Advanced Parameters</span><span class="advancedOptionsIcon" aria-hidden="true">⌄</span>
-            </button>
-            <div class="advancedOptionsContent" id="advancedOptionsContent" hidden>
+          <button class="advancedOptionsToggle" id="advancedOptionsToggle" type="button" aria-controls="advancedOptionsContent" aria-expanded="false">
+            <span data-i18n="advancedParameters">Advanced Parameters</span><span class="advancedOptionsIcon" aria-hidden="true">⌄</span>
+          </button>
+          <div class="advancedOptionsContent" id="advancedOptionsContent" hidden>
               <label class="field" for="thinkingBudget">
-                <span class="fieldLabel" data-i18n="thinkingBudget">Reasoning Budget</span>
+                <span class="fieldLabel parameterLabel"><span data-i18n="thinkingBudget">Reasoning Budget</span><span class="defaultToggle"><input id="thinkingBudgetDefault" type="checkbox" checked><span data-i18n="parameterDefault">Default</span></span></span>
                 <input id="thinkingBudget" type="number" min="0" step="1" inputmode="numeric" data-i18n-title="thinkingBudgetTitle" title="0 means unlimited reasoning">
               </label>
               <label class="field" for="topP">
-                <span class="fieldLabel" data-i18n="topP">Top-P</span>
+                <span class="fieldLabel parameterLabel"><span data-i18n="topP">Top-P</span><span class="defaultToggle"><input id="topPDefault" type="checkbox" checked><span data-i18n="parameterDefault">Default</span></span></span>
                 <input id="topP" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="1">
               </label>
               <label class="field" for="topK">
-                <span class="fieldLabel" data-i18n="topK">Top-K</span>
+                <span class="fieldLabel parameterLabel"><span data-i18n="topK">Top-K</span><span class="defaultToggle"><input id="topKDefault" type="checkbox" checked><span data-i18n="parameterDefault">Default</span></span></span>
                 <input id="topK" type="number" min="-1" step="1" inputmode="numeric" value="-1" data-i18n-title="topKTitle" title="-1 means disabled">
               </label>
               <label class="field" for="minP">
-                <span class="fieldLabel" data-i18n="minP">Min-P</span>
+                <span class="fieldLabel parameterLabel"><span data-i18n="minP">Min-P</span><span class="defaultToggle"><input id="minPDefault" type="checkbox" checked><span data-i18n="parameterDefault">Default</span></span></span>
                 <input id="minP" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="0">
               </label>
-            </div>
           </div>
         </div>
       </section>

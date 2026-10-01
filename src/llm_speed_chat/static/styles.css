@@ -325,13 +325,9 @@ body{
   border-top:1px solid #eaecf0;
 }
 
-.advancedOptions{
-  grid-column:1 / -1;
-  border-top:1px solid #eaecf0;
-  padding-top:10px;
-}
-
 .advancedOptionsToggle{
+  align-self:end;
+  min-height:40px;
   display:flex;
   align-items:center;
   gap:8px;
@@ -341,7 +337,10 @@ body{
   cursor:pointer;
   font-size:12px;
   font-weight:700;
-  padding:0;
+  padding:0 10px;
+  border:1px solid #cfd7e3;
+  border-radius:10px;
+  background:#fff;
 }
 
 .advancedOptionsIcon{
@@ -350,14 +349,70 @@ body{
 }
 
 .advancedOptionsContent{
+  grid-column:1 / -1;
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
   gap:12px;
   margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #eaecf0;
 }
 
 .advancedOptionsContent[hidden]{
   display:none;
+}
+
+.parameterLabel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.defaultToggle{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  color:#667085;
+  font-size:11px;
+  font-weight:500;
+  white-space:nowrap;
+}
+
+.defaultToggle input{
+  appearance:none;
+  position:relative;
+  width:28px;
+  height:16px;
+  min-height:16px;
+  margin:0;
+  padding:0;
+  border:1px solid #98a2b3;
+  border-radius:999px;
+  background:#d0d5dd;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease;
+}
+
+.defaultToggle input::after{
+  content:"";
+  position:absolute;
+  width:12px;
+  height:12px;
+  top:1px;
+  left:1px;
+  border-radius:50%;
+  background:#fff;
+  transition:transform .15s ease;
+}
+
+.defaultToggle input:checked{
+  border-color:#667085;
+  background:#667085;
+}
+
+.defaultToggle input:checked::after{
+  transform:translateX(12px);
 }
 
 .toggleControl{
@@ -1027,9 +1082,26 @@ html[data-theme="dark"] .prompt:focus{
 }
 
 html[data-theme="dark"] .advancedGrid,
+html[data-theme="dark"] .advancedOptionsToggle,
+html[data-theme="dark"] .advancedOptionsContent,
 html[data-theme="dark"] .reasoningLabel,
 html[data-theme="dark"] .previewDialogHead{
   border-color:#303a48;
+}
+
+html[data-theme="dark"] .advancedOptionsToggle{
+  background:#18212d;
+  color:#d5dce7;
+}
+
+html[data-theme="dark"] .defaultToggle input{
+  border-color:#64748b;
+  background:#475569;
+}
+
+html[data-theme="dark"] .defaultToggle input:checked{
+  border-color:#94a3b8;
+  background:#94a3b8;
 }
 
 html[data-theme="dark"] .msg.user{
@@ -1128,6 +1200,10 @@ html[data-theme="dark"] .btn:disabled{
     grid-template-columns:1fr 1fr;
   }
 
+  .advancedOptionsContent{
+    grid-template-columns:1fr 1fr;
+  }
+
   .stats{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
@@ -1163,6 +1239,10 @@ html[data-theme="dark"] .btn:disabled{
   }
 
   .advancedGrid{
+    grid-template-columns:1fr;
+  }
+
+  .advancedOptionsContent{
     grid-template-columns:1fr;
   }
 
