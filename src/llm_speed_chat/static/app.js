@@ -219,7 +219,7 @@
       advancedSettings: "高级生成设置",
       maxTokens: "最大 Token 数",
       temperature: "温度",
-      reasoningEffort: "推理强度",
+      reasoningEffort: "思考强度",
       reasoningEffortOff: "关闭",
       reasoningEffortAuto: "自动",
       reasoningEffortLow: "低",
@@ -1837,10 +1837,10 @@
     maxTokensEl.disabled = isRunning;
     tempEl.disabled = isRunning;
     reasoningEffortEl.disabled = isRunning;
-    thinkingBudgetEl.disabled = isRunning || !reasoningEnabled();
-    topPEl.disabled = isRunning;
-    topKEl.disabled = isRunning;
-    minPEl.disabled = isRunning;
+    thinkingBudgetEl.disabled = isRunning || !reasoningEnabled() || thinkingBudgetDefaultEl.checked;
+    topPEl.disabled = isRunning || topPDefaultEl.checked;
+    topKEl.disabled = isRunning || topKDefaultEl.checked;
+    minPEl.disabled = isRunning || minPDefaultEl.checked;
     thinkingBudgetDefaultEl.disabled = isRunning || !reasoningEnabled();
     topPDefaultEl.disabled = isRunning;
     topKDefaultEl.disabled = isRunning;
@@ -2284,6 +2284,7 @@
     defaultToggle.addEventListener("change", () => {
       updateAdvancedOptionsUI();
       renderRequestSizeHint();
+      renderControlState();
     });
   }
   advancedOptionsToggleEl.addEventListener("click", () => {
@@ -2291,6 +2292,7 @@
     advancedOptionsToggleEl.setAttribute("aria-expanded", String(!expanded));
     updateAdvancedOptionsUI();
     renderRequestSizeHint();
+    renderControlState();
   });
   metricBackendEl.addEventListener("change", () => {
     persistConnectionState();

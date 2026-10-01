@@ -393,14 +393,16 @@ body{
   display:none;
 }
 
-.parameterLabel{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
+.parameterInputWrap{
+  position:relative;
+  display:block;
 }
 
 .defaultToggle{
+  position:absolute;
+  top:50%;
+  right:8px;
+  transform:translateY(-50%);
   display:inline-flex;
   align-items:center;
   gap:4px;
@@ -423,6 +425,16 @@ body{
   background:#d0d5dd;
   cursor:pointer;
   transition:background .15s ease,border-color .15s ease;
+}
+
+.parameterInputWrap > input[type="number"]{
+  padding-right:82px;
+}
+
+.parameterInputWrap > input[type="number"]:disabled{
+  color:#98a2b3;
+  background:#f2f4f7;
+  cursor:not-allowed;
 }
 
 .defaultToggle input::after{
@@ -1143,6 +1155,11 @@ html[data-theme="dark"] .defaultToggle input{
 html[data-theme="dark"] .defaultToggle input:checked{
   border-color:#94a3b8;
   background:#94a3b8;
+}
+
+html[data-theme="dark"] .parameterInputWrap > input[type="number"]:disabled{
+  color:#64748b;
+  background:#202a36;
 }
 
 html[data-theme="dark"] .msg.user{
