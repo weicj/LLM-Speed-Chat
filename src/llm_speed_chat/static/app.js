@@ -36,6 +36,11 @@
   const tempEl = el("temp");
   const reasoningEffortEl = el("reasoningEffort");
   const thinkingBudgetEl = el("thinkingBudget");
+  const topPEl = el("topP");
+  const topKEl = el("topK");
+  const minPEl = el("minP");
+  const advancedOptionsToggleEl = el("advancedOptionsToggle");
+  const advancedOptionsContentEl = el("advancedOptionsContent");
   const metricBackendEl = el("metricBackend");
   const connectBtn = el("connectBtn");
   const apiStatusEl = el("apiStatus");
@@ -119,6 +124,11 @@
       reasoningEffortXHigh: "XHigh",
       thinkingBudget: "Reasoning Budget",
       thinkingBudgetTitle: "0 means unlimited reasoning",
+      advancedParameters: "Advanced Parameters",
+      topP: "Top-P",
+      topK: "Top-K",
+      topKTitle: "-1 means disabled",
+      minP: "Min-P",
       framework: "Framework",
       frameworkTitle: "Detected from the model list. Select a framework to override.",
       frameworkAuto: "Auto-detected",
@@ -138,7 +148,7 @@
       overallDecodeSpeed: "Overall Decode Speed",
       decodeSamples: "Samples",
       decodeChartEmpty: "Waiting for decode samples...",
-      decodeTrendLegend: "Speed trend",
+      decodeTrendLegend: "Answer",
       decodeAverageLegend: "Average",
       decodeTtftLegend: "TTFT",
       decodePeakMarker: "Peak",
@@ -205,6 +215,11 @@
       reasoningEffortXHigh: "极高",
       thinkingBudget: "推理预算",
       thinkingBudgetTitle: "输入 0 表示无限推理",
+      advancedParameters: "高级参数",
+      topP: "Top-P",
+      topK: "Top-K",
+      topKTitle: "-1 表示关闭",
+      minP: "Min-P",
       framework: "推理框架",
       frameworkTitle: "从模型列表中检测；可手动覆盖。",
       frameworkAuto: "自动检测",
@@ -224,7 +239,7 @@
       overallDecodeSpeed: "总体解码速度",
       decodeSamples: "采样数",
       decodeChartEmpty: "等待解码采样...",
-      decodeTrendLegend: "速度趋势",
+      decodeTrendLegend: "正文",
       decodeAverageLegend: "平均值",
       decodeTtftLegend: "TTFT",
       decodePeakMarker: "最高",
@@ -292,6 +307,9 @@
   maxTokensEl.value = String(CONFIG.defaultMaxTokens);
   tempEl.value = String(CONFIG.defaultTemperature);
   thinkingBudgetEl.value = String(CONFIG.defaultThinkingBudget || 0);
+  topPEl.value = "1";
+  topKEl.value = "-1";
+  minPEl.value = "0";
   reasoningEffortEl.value = storage.getItem(reasoningEffortStorageKey)
     || (Number(CONFIG.defaultThinkingBudget) > 0 ? "auto" : "off");
   metricBackendEl.value = storage.getItem(metricBackendStorageKey) || "auto";
@@ -1725,8 +1743,16 @@
       temperature: Number.isFinite(Number(tempEl.value))
         ? Number(tempEl.value)
         : CONFIG.defaultTemperature,
-      thinking_budget_tokens: thinkingBudgetTokens(),
     };
+
+    const budget = thinkingBudgetTokens();
+    if (reasoningEnabled() && budget > 0) payload.thinking_budget_tokens = budget;
+    const topP = Number(topPEl.value);
+    const topK = Math.trunc(Number(topKEl.value));
+    const minP = Number(minPEl.value);
+    if (Number.isFinite(topP) && topP >= 0 && topP < 1) payload.top_p = topP;
+    if (Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
+    if (Number.isFinite(minP) && minP > 0) payload.min_p = minP;
 
     // ExLlama's OpenAI-compatible server reads this template switch at top level.
     if (isExLlamaEndpoint) {
@@ -1784,6 +1810,9 @@
     tempEl.disabled = isRunning;
     reasoningEffortEl.disabled = isRunning;
     thinkingBudgetEl.disabled = isRunning || !reasoningEnabled();
+    topPEl.disabled = isRunning;
+    topKEl.disabled = isRunning;
+    minPEl.disabled = isRunning;
     metricBackendEl.disabled = isRunning;
   }
 
@@ -2208,6 +2237,15 @@
     renderControlState();
   });
   thinkingBudgetEl.addEventListener("input", renderRequestSizeHint);
+  for (const control of [topPEl, topKEl, minPEl]) {
+    control.addEventListener("input", renderRequestSizeHint);
+  }
+  advancedOptionsToggleEl.addEventListener("click", () => {
+    const expanded = advancedOptionsToggleEl.getAttribute("aria-expanded") === "true";
+    advancedOptionsToggleEl.setAttribute("aria-expanded", String(!expanded));
+    advancedOptionsContentEl.hidden = expanded;
+    advancedOptionsToggleEl.querySelector(".advancedOptionsIcon").textContent = expanded ? "⌄" : "⌃";
+  });
   metricBackendEl.addEventListener("change", () => {
     persistConnectionState();
     renderRequestSizeHint();
