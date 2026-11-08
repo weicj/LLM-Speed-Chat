@@ -251,7 +251,7 @@ def create_handler(settings: Settings):
             body = self.rfile.read(length)
             request_json = None
             try:
-                if path not in {"/models", "/chat"}:
+                if path not in {"/models", "/framework", "/chat"}:
                     error = "not_found"
                     self._send_text(404, "not found", "text/plain; charset=utf-8")
                     return
@@ -279,6 +279,9 @@ def create_handler(settings: Settings):
                 self._set_request_target(request_settings)
                 if path == "/models":
                     self._serve_models(request_settings)
+                    return
+                if path == "/framework":
+                    self._serve_framework(request_settings)
                     return
 
                 request_json = _strip_runtime_fields(payload)
@@ -356,6 +359,21 @@ def create_handler(settings: Settings):
                 )
             except Exception as err:  # noqa: BLE001
                 self._send_json(502, {"error": str(err)})
+
+        def _serve_framework(self, request_settings: Settings) -> None:
+            framework = None
+            try:
+                request = build_request(request_settings, "/health", method="GET")
+                with urllib.request.urlopen(
+                    request,
+                    timeout=min(request_settings.upstream_model_timeout_s, 2),
+                ) as response:
+                    health = json.loads(response.read(8192))
+                if isinstance(health, dict) and health.get("service") == "strata":
+                    framework = "strata"
+            except (OSError, TimeoutError, ValueError):
+                pass
+            self._send_json(200, {"framework": framework})
 
         def _send_sse_metrics(self, metrics: dict[str, object]) -> None:
             payload = json.dumps({"metrics": metrics}, separators=(",", ":")).encode("utf-8")

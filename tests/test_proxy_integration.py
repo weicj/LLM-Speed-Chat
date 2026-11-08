@@ -86,6 +86,15 @@ class ProxyIntegrationTest(unittest.TestCase):
                         json.dumps({"data": [{"id": "demo-model", "root": "/tmp/demo-model"}]}).encode("utf-8")
                     )
                     return
+                if self.path == "/health":
+                    if state.get("health_mode") == "strata":
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"service": "strata"}).encode("utf-8"))
+                    else:
+                        self.send_error(404)
+                    return
                 self.send_error(404)
 
             def do_POST(self) -> None:
@@ -196,6 +205,18 @@ class ProxyIntegrationTest(unittest.TestCase):
         self.assertEqual(payload["title"], "LLM Speed Chat")
         self.assertIn("defaultMaxTokens", payload)
         self.assertNotIn("requestIdHeader", payload)
+
+    def test_framework_probe_recognizes_strata_and_ignores_missing_health(self) -> None:
+        self.upstream_state["health_mode"] = "strata"
+        status, body, _ = self._request("/framework", method="POST", payload={"upstream_api_key": "probe-key"})
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {"framework": "strata"})
+        self.assertEqual(self._header_value(self._request_record("/health")["headers"], "Authorization"), "Bearer probe-key")
+
+        self.upstream_state["health_mode"] = "missing"
+        status, body, _ = self._request("/framework", method="POST", payload={})
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {"framework": None})
 
     def test_models_post_forwards_runtime_api_key(self) -> None:
         status, body, _ = self._request(

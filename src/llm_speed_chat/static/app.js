@@ -305,6 +305,8 @@
   let modelLoadVersion = 0;
   let modelMetadataById = new Map();
   let detectedFramework = "universal";
+  let endpointFramework = "universal";
+  let frameworkProbeController = null;
   let previewMarkup = "";
   let previewMode = "standard";
   let latestDecodeSamples = [];
@@ -328,7 +330,7 @@
     || (Number(CONFIG.defaultThinkingBudget) > 0 ? "auto" : "off");
   metricBackendEl.value = storage.getItem(metricBackendStorageKey) || "auto";
   if (metricBackendEl.value === "standard") metricBackendEl.value = "universal";
-  if (!new Set(["auto", "universal", "llamacpp", "vllm", "sglang", "exllama"]).has(metricBackendEl.value)) {
+  if (!new Set(["auto", "universal", "llamacpp", "vllm", "sglang", "strata", "exllama"]).has(metricBackendEl.value)) {
     metricBackendEl.value = "auto";
   }
   promptEl.value = session.getItem(promptStorageKey) || "";
@@ -411,6 +413,7 @@
     if (owner.includes("llamacpp") || owner.includes("llama.cpp")) return "llamacpp";
     if (owner.includes("vllm")) return "vllm";
     if (owner.includes("sglang")) return "sglang";
+    if (owner.includes("strata")) return "strata";
     if (owner.includes("exllama")) return "exllama";
     return "universal";
   }
@@ -420,13 +423,15 @@
       llamacpp: "llama.cpp",
       vllm: "vLLM",
       sglang: "SGLang",
+      strata: "Strata",
       exllama: "ExLlama",
       universal: t("frameworkUniversal"),
     }[framework] || t("frameworkUniversal");
   }
 
   function refreshFrameworkDetection() {
-    detectedFramework = inferFramework(modelMetadataById.get(currentModel()));
+    const modelFramework = inferFramework(modelMetadataById.get(currentModel()));
+    detectedFramework = modelFramework === "universal" ? endpointFramework : modelFramework;
     const automaticOption = metricBackendEl.querySelector('option[value="auto"]');
     if (automaticOption) {
       automaticOption.textContent = `${t("frameworkAuto")} (${frameworkLabel(detectedFramework)})`;
@@ -435,6 +440,19 @@
 
   function currentFramework() {
     return metricBackendEl.value === "auto" ? detectedFramework : metricBackendEl.value;
+  }
+
+  function updateFrameworkParameterBounds() {
+    const isStrata = currentFramework() === "strata";
+    topKEl.min = isStrata ? "1" : "-1";
+    if (isStrata) topKEl.max = "64";
+    else topKEl.removeAttribute("max");
+    topPEl.min = isStrata ? "0.01" : "0";
+    topKEl.title = isStrata ? "1-64" : t("topKTitle");
+    if (isStrata && !topKDefaultEl.checked && (!Number.isFinite(Number(topKEl.value)) || Number(topKEl.value) < 1 || Number(topKEl.value) > 64)) {
+      topKEl.value = "40";
+    }
+    if (isStrata && !topPDefaultEl.checked && Number(topPEl.value) <= 0) topPEl.value = "1";
   }
 
   function t(key) {
@@ -493,6 +511,7 @@
     }
     applyTheme();
     refreshFrameworkDetection();
+    updateFrameworkParameterBounds();
     drawDecodeChart();
   }
 
@@ -1776,8 +1795,9 @@
       const topP = Number(topPEl.value);
       const topK = Math.trunc(Number(topKEl.value));
       const minP = Number(minPEl.value);
-      if (!topPDefaultEl.checked && Number.isFinite(topP) && topP >= 0 && topP <= 1) payload.top_p = topP;
-      if (!topKDefaultEl.checked && Number.isFinite(topK) && topK >= 0) payload.top_k = topK;
+      const isStrata = framework === "strata";
+      if (!topPDefaultEl.checked && Number.isFinite(topP) && topP >= (isStrata ? 0.01 : 0) && topP <= 1) payload.top_p = topP;
+      if (!topKDefaultEl.checked && Number.isFinite(topK) && topK >= (isStrata ? 1 : 0) && (!isStrata || topK <= 64)) payload.top_k = topK;
       if (!minPDefaultEl.checked && Number.isFinite(minP) && minP >= 0 && minP <= 1) payload.min_p = minP;
     }
 
@@ -1878,12 +1898,45 @@
     return appendRetryAfterHint(message, response, readRetryAfterSeconds(response));
   }
 
+  async function probeStrataEndpoint(version) {
+    const controller = new AbortController();
+    frameworkProbeController = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 2500);
+    try {
+      const response = isDirectTransport
+        ? await fetch(directEndpoint("/health"), {headers: requestHeaders(), signal: controller.signal})
+        : await fetch("/framework", {
+          method: "POST",
+          headers: requestHeaders({json: true}),
+          body: JSON.stringify(buildConnectionPayload()),
+          signal: controller.signal,
+        });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (version !== modelLoadVersion || controller.signal.aborted) return;
+      if (payload && (payload.service === "strata" || payload.framework === "strata")) {
+        endpointFramework = "strata";
+        refreshFrameworkDetection();
+        updateFrameworkParameterBounds();
+        renderRequestSizeHint();
+      }
+    } catch {
+      // Health probes are optional; model discovery and manual selection still work.
+    } finally {
+      window.clearTimeout(timeout);
+      if (frameworkProbeController === controller) frameworkProbeController = null;
+    }
+  }
+
   async function loadModels({reason = "auto"} = {}) {
+    if (frameworkProbeController) frameworkProbeController.abort();
+    endpointFramework = "universal";
     const upstreamBaseUrl = currentUpstreamBaseUrl();
     if (!upstreamBaseUrl) {
       replaceModelOptions([]);
       modelMetadataById = new Map();
       refreshFrameworkDetection();
+      updateFrameworkParameterBounds();
       modelEl.value = "";
       renderRequestSizeHint();
       setApiStatus("Enter an API URL to auto-detect models.");
@@ -1899,6 +1952,7 @@
     modelLoadController = new AbortController();
     modelMetadataById = new Map();
     refreshFrameworkDetection();
+    updateFrameworkParameterBounds();
     setApiStatus(reason === "manual" ? "Refreshing models..." : "Detecting models...");
     renderControlState();
 
@@ -1939,8 +1993,11 @@
         modelEl.value = modelIds[0] || current;
       }
       refreshFrameworkDetection();
+      updateFrameworkParameterBounds();
       persistConnectionState();
       renderRequestSizeHint();
+
+      if (detectedFramework === "universal") void probeStrataEndpoint(version);
 
       if (modelIds.length) {
         setApiStatus(`Loaded ${models.length} model${models.length === 1 ? "" : "s"}.`);
@@ -2257,6 +2314,7 @@
   modelEl.addEventListener("input", () => {
     persistConnectionState();
     refreshFrameworkDetection();
+    updateFrameworkParameterBounds();
     renderRequestSizeHint();
     renderControlState();
   });
@@ -2281,6 +2339,7 @@
       renderRequestSizeHint();
     });
     defaultToggle.addEventListener("change", () => {
+      updateFrameworkParameterBounds();
       updateAdvancedOptionsUI();
       renderRequestSizeHint();
       renderControlState();
@@ -2295,6 +2354,7 @@
   });
   metricBackendEl.addEventListener("change", () => {
     persistConnectionState();
+    updateFrameworkParameterBounds();
     renderRequestSizeHint();
   });
 

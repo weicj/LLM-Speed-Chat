@@ -20,6 +20,17 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (req.method === "GET" && req.url === "/health") {
+      if (req.headers.authorization === "Bearer local-strata") {
+        res.writeHead(200, {...corsHeaders, "Content-Type": "application/json"});
+        res.end(JSON.stringify({service: "strata", status: "ok"}));
+      } else {
+        res.writeHead(404, corsHeaders);
+        res.end();
+      }
+      return;
+    }
+
     if (req.method === "GET" && req.url === "/v1/models") {
       if ((req.headers.authorization || "") === "Bearer rate-limit-models") {
         res.writeHead(429, {
@@ -35,6 +46,7 @@ const server = http.createServer((req, res) => {
       const isLocalVllm = authorization === "Bearer local-vllm";
       const isLocalLlama = authorization === "Bearer local-llama";
       const isLocalExLlama = authorization === "Bearer local-exllama";
+      const isLocalStrata = authorization === "Bearer local-strata";
       res.writeHead(200, {...corsHeaders, "Content-Type": "application/json"});
       res.end(JSON.stringify({
         data: isLocalVllm
@@ -42,7 +54,9 @@ const server = http.createServer((req, res) => {
           : isLocalLlama
             ? [{id: "local-llama-model", owned_by: "llamacpp"}]
             : isLocalExLlama
-              ? [{id: "local-exllama-model", owned_by: "exllama"}]
+            ? [{id: "local-exllama-model", owned_by: "exllama"}]
+            : isLocalStrata
+              ? [{id: "local-strata-model", object: "model", status: "ready", meta: {architecture: "test"}}]
             : [{id: "demo-model", root: "demo-root"}],
       }));
       return;
@@ -63,6 +77,19 @@ const server = http.createServer((req, res) => {
         : [];
       const userMessages = messages.filter((item) => item.role === "user");
       const lastUserText = extractMessageText(userMessages.at(-1));
+
+      if (lastUserText.includes("strata-metrics")) {
+        streamChunks(res, [
+          {delayMs: 100, data: {choices: [{delta: {reasoning_content: "Considering this."}}]}},
+          {delayMs: 100, data: {choices: [{delta: {content: "Strata answer."}}]}},
+          {delayMs: 0, data: {
+            choices: [],
+            usage: {prompt_tokens: 12, completion_tokens: 5, total_tokens: 17},
+            timings: {prompt_n: 12, prompt_per_second: 60, predicted_n: 5, predicted_ms: 100, predicted_per_second: 50},
+          }},
+        ]);
+        return;
+      }
 
       if (lastUserText.includes("upstream-rate-limit")) {
         res.writeHead(429, {

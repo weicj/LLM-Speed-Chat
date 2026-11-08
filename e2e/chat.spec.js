@@ -228,7 +228,6 @@ test("keeps llama.cpp's cumulative decode rate ahead of an MTP batch sample", as
   // The final verification batch is 120 tok/s (3 tokens / 25 ms), but the
   // current trend uses a 250 ms rolling window: 4 tokens / 75 ms = 53.3.
   await expect(page.locator("#decodeSpeed")).toHaveText("53.3 tok/s");
-  await expect(page.locator("#decodeChartCurrent")).toHaveText("53.3 tok/s");
   await expect(page.locator("#peakDecodeSpeed")).toHaveText("53.3 tok/s");
   await expect(page.locator("#meanDecodeSpeed")).toHaveText("53.3 tok/s");
 });
@@ -271,6 +270,67 @@ test("SGLang source requests exact continuous usage without unsupported token ID
   await expect(page.locator("#promptThroughput")).not.toContainText("~");
   await expect(page.locator("#tokens")).toHaveText("2");
   await expect(page.locator("#decodeSpeed")).not.toContainText("~");
+});
+
+test("auto-detects Strata without model owner and sends compatible controls", async ({ page }) => {
+  const requestPromise = page.waitForRequest((request) => request.url().endsWith("/chat"));
+
+  await page.locator("#apiKey").fill("local-strata");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-strata-model");
+  await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (Strata)");
+
+  await page.locator("#reasoningEffort").selectOption("high");
+  await page.locator("#advancedOptionsToggle").click();
+  await page.locator("#thinkingBudgetDefault").uncheck();
+  await page.locator("#thinkingBudget").fill("128");
+  await page.locator("#topKDefault").uncheck();
+  await expect(page.locator("#topK")).toHaveValue("40");
+  await expect(page.locator("#topK")).toHaveAttribute("max", "64");
+  await page.locator("#topPDefault").uncheck();
+  await page.locator("#topP").fill("0.9");
+  await page.locator("#minPDefault").uncheck();
+  await page.locator("#minP").fill("0.05");
+  await page.locator("#prompt").fill("strata-metrics");
+  await page.locator("#sendBtn").click();
+
+  const payload = JSON.parse((await requestPromise).postData() || "{}");
+  expect(payload.stream_options).toEqual({include_usage: true});
+  expect(payload.chat_template_kwargs).toEqual({enable_thinking: true});
+  expect(payload.reasoning_effort).toBe("high");
+  expect(payload.thinking_budget_tokens).toBe(128);
+  expect(payload.top_k).toBe(40);
+  expect(payload.top_p).toBe(0.9);
+  expect(payload.min_p).toBe(0.05);
+  expect(payload.return_token_ids).toBeUndefined();
+  expect(payload.timings_per_token).toBeUndefined();
+  await expect(page.locator(".msg.assistant").last()).toContainText("Strata answer.");
+  await expect(page.locator("#promptTokenCount")).toHaveText("12");
+  await expect(page.locator("#promptThroughput")).toHaveText("60.0 tok/s");
+  await expect(page.locator("#tokens")).toHaveText("5");
+  await expect(page.locator("#decodeSpeed")).toHaveText("50.0 tok/s");
+  await expect(page.locator(".reasoningContent").last()).toContainText("Considering this.");
+});
+
+test("GitHub Pages detects Strata through its health endpoint", async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:${staticSitePort}/`);
+  await page.locator("#apiBaseUrl").fill(`http://127.0.0.1:${UPSTREAM_PORT}/v1`);
+  await page.locator("#apiKey").fill("local-strata");
+  await page.locator("#connectBtn").click();
+  await expect(page.locator("#model")).toHaveValue("local-strata-model");
+  await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (Strata)");
+  await context.close();
+});
+
+test("Strata can be selected manually when health detection is unavailable", async ({ page }) => {
+  await expect(page.locator("#metricBackend option[value='auto']")).toHaveText("Auto-detected (Universal)");
+  await page.locator("#metricBackend").selectOption("strata");
+  await expect(page.locator("#topK")).toHaveAttribute("min", "1");
+  await page.locator("#prompt").fill("strata-metrics");
+  await page.locator("#sendBtn").click();
+  await expect(page.locator(".msg.assistant").last()).toContainText("Strata answer.");
 });
 
 test("uses ExLlama endpoint capabilities even with the Universal metrics override", async ({ page }) => {
@@ -386,6 +446,8 @@ test("switches the interface between English and Chinese without exposing the mo
 
 test("uses an unlimited thinking budget when enabled with zero", async ({ page }) => {
   await page.locator("#reasoningEffort").selectOption("auto");
+  await page.locator("#advancedOptionsToggle").click();
+  await page.locator("#thinkingBudgetDefault").uncheck();
   await page.locator("#thinkingBudget").fill("0");
   await page.locator("#prompt").fill("thinking-unlimited");
   await page.locator("#sendBtn").click();

@@ -48,10 +48,11 @@ PORT=8080
 
 ## Metrics and Frameworks
 
-The Framework selector is auto-detected from model metadata and can be overridden with `llama.cpp`, vLLM, SGLang, ExLlama, or Universal.
+The Framework selector is auto-detected from model metadata (or Strata's `/health` endpoint) and can be overridden with `llama.cpp`, vLLM, SGLang, Strata, ExLlama, or Universal.
 
 - Local llama.cpp and vLLM endpoints request token IDs. Any framework that returns standard `timings` can provide exact prefill/decode rates.
 - SGLang requests continuous usage statistics. ExLlama uses its standard OpenAI-compatible usage response and displays exact prefill/decode rates when the endpoint returns `timings`.
+- Strata uses its OpenAI-compatible chat stream, including `reasoning_content`, final `usage`, and optional `timings`. The Reasoning Budget, Top-K (1-64), Top-P, and Min-P controls use Strata-compatible fields when customized. Browser-direct auto-detection requires CORS access to `/health`; manual selection remains available.
 - Universal is the fallback for hosted or unrecognized APIs. Missing exact counts are marked provisional with `~` until standard usage is returned.
 - Wall Time is measured in the browser from request start through stream completion, cancellation, or failure.
 
