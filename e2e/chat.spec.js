@@ -345,6 +345,25 @@ test("Strata progress is measured and bursty SSE does not create decode spikes",
   expect(await page.locator("#decodeChart").evaluate((canvas) => canvas.width > 0 && canvas.height > 0)).toBe(true);
 });
 
+test("decode chart keeps scrolling while the response is still streaming", async ({ page }) => {
+  await page.locator("#apiKey").fill("local-strata");
+  await page.locator("#connectBtn").click();
+  await page.locator("#decodeDetailsToggle").click();
+  await page.locator("#prompt").fill("strata-live-chart");
+  await page.locator("#sendBtn").click();
+
+  await expect.poll(async () => Number(await page.locator("#decodeSampleCount").textContent()))
+    .toBeGreaterThan(1);
+  const firstFrame = await page.locator("#decodeChart").evaluate((canvas) => canvas.toDataURL());
+  const firstCount = Number(await page.locator("#decodeSampleCount").textContent());
+  await expect.poll(async () => Number(await page.locator("#decodeSampleCount").textContent()))
+    .toBeGreaterThan(firstCount);
+  const nextFrame = await page.locator("#decodeChart").evaluate((canvas) => canvas.toDataURL());
+
+  expect(nextFrame).not.toBe(firstFrame);
+  await expect(page.locator("#cancelBtn")).toBeEnabled();
+});
+
 test("long streams append live text and format Markdown once at completion", async ({ page }) => {
   await page.locator("#prompt").fill("large-markdown-stream");
   await page.locator("#sendBtn").click();

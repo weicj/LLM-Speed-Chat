@@ -315,6 +315,8 @@
   let previewMarkup = "";
   let previewMode = "standard";
   let latestDecodeSamples = [];
+  let lastDrawnDecodeSampleCount = 0;
+  let lastDrawnDecodeComplete = false;
   let latestDecodeWallSeconds = 0;
   let latestDecodeTTFTSeconds = 0;
   let latestDecodeDurationSeconds = 0;
@@ -686,8 +688,6 @@
       : "--";
     ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
-    const previousSampleCount = latestDecodeSamples.length;
-    const wasComplete = latestDecodeComplete;
     latestDecodeSamples = Array.isArray(metrics.decode_samples) ? metrics.decode_samples : [];
     latestDecodeWallSeconds = Number(metrics.wall_s) || 0;
     latestDecodeTTFTSeconds = Number(metrics.ttft_s) || 0;
@@ -710,7 +710,12 @@
     answerTokensEl.textContent = formatPhaseTokens(answer.tokens, answer.provisional);
     answerTimeEl.textContent = formatDuration(answer.seconds);
     answerSpeedEl.textContent = formatPhaseSpeed(answer.tok_s, answer.provisional);
-    if (previousSampleCount !== latestDecodeSamples.length || wasComplete !== latestDecodeComplete) drawDecodeChart();
+    if (lastDrawnDecodeSampleCount !== latestDecodeSamples.length
+      || lastDrawnDecodeComplete !== latestDecodeComplete) {
+      drawDecodeChart();
+      lastDrawnDecodeSampleCount = latestDecodeSamples.length;
+      lastDrawnDecodeComplete = latestDecodeComplete;
+    }
   }
 
   function drawDecodeChart() {
@@ -1449,6 +1454,8 @@
     meanDecodeSpeedEl.textContent = "--";
     lowDecodeSpeedEl.textContent = "--";
     latestDecodeSamples = [];
+    lastDrawnDecodeSampleCount = 0;
+    lastDrawnDecodeComplete = false;
     latestDecodeWallSeconds = 0;
     latestDecodeTTFTSeconds = 0;
     latestDecodeDurationSeconds = 0;

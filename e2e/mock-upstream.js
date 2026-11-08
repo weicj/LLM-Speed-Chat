@@ -85,6 +85,17 @@ const server = http.createServer((req, res) => {
       const userMessages = messages.filter((item) => item.role === "user");
       const lastUserText = extractMessageText(userMessages.at(-1));
 
+      if (lastUserText.includes("strata-live-chart")) {
+        streamChunks(res, [
+          ...Array.from({length: 18}, (_, index) => ({
+            delayMs: 120,
+            data: {choices: [{delta: {content: index % 2 ? "steady token " : "another token "}}]},
+          })),
+          {delayMs: 1200, data: {choices: [{delta: {}, finish_reason: "stop"}], usage: {prompt_tokens: 8, completion_tokens: 18}}},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("strata-burst-metrics")) {
         streamChunks(res, [
           {delayMs: 100, data: {choices: [{delta: {}}], prompt_progress: {total: 40, cache: 5, processed: 15, time_ms: 200}}},
