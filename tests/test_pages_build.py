@@ -34,7 +34,7 @@ class PagesBuildTest(unittest.TestCase):
 
             self.assertIn('data-transport="direct"', index_html)
             self.assertIn('href="./static/styles.css"', index_html)
-            self.assertIn('src="./static/app.js"', index_html)
+            self.assertRegex(index_html, r'src="\./static/app\.js\?v=[0-9a-f]{12}"')
             self.assertNotIn('src="/static/', index_html)
             self.assertNotIn('href="/static/', index_html)
             self.assertIn("isDirectTransport", app_js)

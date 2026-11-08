@@ -312,7 +312,7 @@ test("auto-detects Strata without model owner and sends compatible controls", as
   await expect(page.locator(".reasoningContent").last()).toContainText("Considering this.");
 });
 
-test("GitHub Pages detects Strata through its health endpoint", async ({ browser }) => {
+test("GitHub Pages detects Strata when its health endpoint lacks CORS", async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${staticSitePort}/`);

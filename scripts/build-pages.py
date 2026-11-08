@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -27,6 +28,12 @@ def build_site(output_dir: Path) -> None:
     )
     index_html = index_html.replace('href="/static/', 'href="./static/')
     index_html = index_html.replace('src="/static/', 'src="./static/')
+    app_js_hash = hashlib.sha256((STATIC_SOURCE / "app.js").read_bytes()).hexdigest()[:12]
+    index_html = index_html.replace(
+        'src="./static/app.js"',
+        f'src="./static/app.js?v={app_js_hash}"',
+        1,
+    )
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")
 
 

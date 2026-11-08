@@ -415,6 +415,14 @@
     if (owner.includes("sglang")) return "sglang";
     if (owner.includes("strata")) return "strata";
     if (owner.includes("exllama")) return "exllama";
+    // Strata exposes this model shape, but its /health response is not CORS-readable.
+    if (isDirectTransport && !owner && model.object === "model"
+      && ["loaded", "unloaded"].includes(model.status && model.status.value)
+      && Number.isInteger(model.meta && model.meta.n_ctx)
+      && model.meta.n_ctx > 0
+      && Array.isArray(model.architecture && model.architecture.input_modalities)
+      && Array.isArray(model.architecture && model.architecture.output_modalities)
+      && model.architecture.output_modalities.includes("text")) return "strata";
     return "universal";
   }
 

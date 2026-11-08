@@ -22,7 +22,8 @@ const server = http.createServer((req, res) => {
 
     if (req.method === "GET" && req.url === "/health") {
       if (req.headers.authorization === "Bearer local-strata") {
-        res.writeHead(200, {...corsHeaders, "Content-Type": "application/json"});
+        // Strata's real health route omits CORS even when /v1/models allows it.
+        res.writeHead(200, {"Content-Type": "application/json"});
         res.end(JSON.stringify({service: "strata", status: "ok"}));
       } else {
         res.writeHead(404, corsHeaders);
@@ -56,7 +57,13 @@ const server = http.createServer((req, res) => {
             : isLocalExLlama
             ? [{id: "local-exllama-model", owned_by: "exllama"}]
             : isLocalStrata
-              ? [{id: "local-strata-model", object: "model", status: "ready", meta: {architecture: "test"}}]
+              ? [{
+                id: "local-strata-model",
+                object: "model",
+                status: {value: "loaded"},
+                meta: {n_ctx: 262144},
+                architecture: {input_modalities: ["text", "image"], output_modalities: ["text"]},
+              }]
             : [{id: "demo-model", root: "demo-root"}],
       }));
       return;
