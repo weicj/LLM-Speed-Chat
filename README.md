@@ -53,6 +53,7 @@ The Framework selector is auto-detected from model metadata (or Strata's `/healt
 - Local llama.cpp and vLLM endpoints request token IDs. Any framework that returns standard `timings` can provide exact prefill/decode rates.
 - SGLang requests continuous usage statistics. ExLlama uses its standard OpenAI-compatible usage response and displays exact prefill/decode rates when the endpoint returns `timings`.
 - Strata uses its OpenAI-compatible chat stream, including `reasoning_content`, final `usage`, and optional `timings`. The Reasoning Budget, Top-K (1-64), Top-P, and Min-P controls use Strata-compatible fields when customized. Browser-direct auto-detection uses Strata's model-list fields because its `/health` route may not expose CORS headers; manual selection remains available.
+- When the hosted Pages site connects to a local endpoint, the browser must permit Local Network Access as well as the endpoint's CORS policy. If model discovery fails, framework auto-detection cannot run.
 - Universal is the fallback for hosted or unrecognized APIs. Missing exact counts are marked provisional with `~` until standard usage is returned.
 - Wall Time is measured in the browser from request start through stream completion, cancellation, or failure.
 

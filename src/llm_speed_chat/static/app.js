@@ -399,7 +399,7 @@
   function requestFailureMessage(error) {
     const message = error && error.message ? error.message : "request failed";
     return isDirectTransport
-      ? `${message}. Confirm that this API allows browser CORS requests.`
+      ? `${message}. Check API CORS headers and the browser's Local Network Access permission.`
       : message;
   }
 
