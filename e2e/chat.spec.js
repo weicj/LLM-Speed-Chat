@@ -164,7 +164,7 @@ test("auto-detects vLLM and replaces live speed with the final decode rate", asy
 
   await expect(page.locator(".msg.assistant").last()).toContainText("Exact local");
   await expect(page.locator("#promptThroughput")).toContainText("tok/s");
-  await expect(page.locator("#promptThroughput")).not.toContainText("~");
+  await expect(page.locator("#promptThroughput")).toContainText("~");
   await expect(page.locator("#tokens")).toHaveText("1");
 
   const wallBefore = await page.locator("#wallTime").textContent();
@@ -246,6 +246,7 @@ test("Universal framework suppresses local-only metric fields and falls back cle
   const payload = JSON.parse(request.postData() || "{}");
   expect(payload.return_token_ids).toBeUndefined();
   expect(payload.timings_per_token).toBeUndefined();
+  expect(payload.return_progress).toBeUndefined();
   expect(payload.stream_options).toEqual({include_usage: true});
 
   await expect(page.locator(".msg.assistant").last()).toContainText("Done.");
@@ -267,7 +268,7 @@ test("SGLang source requests exact continuous usage without unsupported token ID
 
   await expect(page.locator(".msg.assistant").last()).toContainText("SGLang");
   await expect(page.locator("#tokens")).toHaveText("1");
-  await expect(page.locator("#promptThroughput")).not.toContainText("~");
+  await expect(page.locator("#promptThroughput")).toContainText("~");
   await expect(page.locator("#tokens")).toHaveText("2");
   await expect(page.locator("#decodeSpeed")).not.toContainText("~");
 });
@@ -304,12 +305,63 @@ test("auto-detects Strata without model owner and sends compatible controls", as
   expect(payload.min_p).toBe(0.05);
   expect(payload.return_token_ids).toBeUndefined();
   expect(payload.timings_per_token).toBeUndefined();
+  expect(payload.return_progress).toBe(true);
   await expect(page.locator(".msg.assistant").last()).toContainText("Strata answer.");
   await expect(page.locator("#promptTokenCount")).toHaveText("12");
   await expect(page.locator("#promptThroughput")).toHaveText("60.0 tok/s");
   await expect(page.locator("#tokens")).toHaveText("5");
   await expect(page.locator("#decodeSpeed")).toHaveText("50.0 tok/s");
   await expect(page.locator(".reasoningContent").last()).toContainText("Considering this.");
+});
+
+test("Strata progress is measured and bursty SSE does not create decode spikes", async ({ page }) => {
+  await page.locator("#apiKey").fill("local-strata");
+  await page.locator("#connectBtn").click();
+  await page.locator("#decodeDetailsToggle").click();
+  await page.locator("#advancedOptionsToggle").click();
+  await expect(page.locator("#samplingTime")).toHaveValue("0.2");
+  await expect(page.locator("#samplingTime")).toHaveAttribute("min", "0.01");
+  await expect(page.locator("#samplingTime")).toHaveAttribute("max", "60");
+  await page.locator("#samplingTime").fill("0.001");
+  await page.locator("#samplingTime").press("Tab");
+  await expect(page.locator("#samplingTime")).toHaveValue("0.01");
+  await page.locator("#samplingTime").fill("61");
+  await page.locator("#samplingTime").press("Tab");
+  await expect(page.locator("#samplingTime")).toHaveValue("60");
+  await page.locator("#samplingTime").fill("0.2");
+  await page.locator("#prompt").fill("strata-burst-metrics");
+  await page.locator("#sendBtn").click();
+
+  await expect(page.locator("#promptTokenCount")).toHaveText("40");
+  await expect(page.locator("#promptThroughput")).toHaveText("100 tok/s");
+  await expect(page.locator(".msg.assistant").last()).toContainText("and done.");
+  await expect(page.locator("#promptThroughput")).toHaveText("80.0 tok/s");
+  await expect(page.locator("#tokens")).toHaveText("60");
+  await expect(page.locator("#decodeSpeed")).toHaveText("40.0 tok/s");
+  await expect(page.locator("#decodeSampleCount")).not.toHaveText("0");
+  const peak = Number.parseFloat((await page.locator("#peakDecodeSpeed").textContent()).replace("~", ""));
+  expect(peak).toBeGreaterThan(0);
+  expect(peak).toBeLessThan(200);
+  expect(await page.locator("#decodeChart").evaluate((canvas) => canvas.width > 0 && canvas.height > 0)).toBe(true);
+});
+
+test("long streams append live text and format Markdown once at completion", async ({ page }) => {
+  await page.locator("#prompt").fill("large-markdown-stream");
+  await page.locator("#sendBtn").click();
+  const body = page.locator(".msg.assistant").last().locator(".messageBody");
+  await expect(body).toContainText("Stream heading");
+  await expect(body).toContainText("more text");
+  expect(await body.evaluate((node) => node.childNodes.length)).toBe(1);
+  await expect(body.locator("h2")).toHaveText("Stream heading");
+  await expect(body.locator("strong")).toHaveText("bold finish");
+});
+
+test("advanced sampling control fits a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({width: 390, height: 844});
+  await page.locator("#advancedOptionsToggle").click();
+  await expect(page.locator("#samplingTime")).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });
 
 test("GitHub Pages detects Strata when its health endpoint lacks CORS", async ({ browser }) => {

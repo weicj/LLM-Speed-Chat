@@ -43,6 +43,7 @@
   const topKDefaultEl = el("topKDefault");
   const minPEl = el("minP");
   const minPDefaultEl = el("minPDefault");
+  const samplingTimeEl = el("samplingTime");
   const advancedOptionsToggleEl = el("advancedOptionsToggle");
   const advancedOptionsContentEl = el("advancedOptionsContent");
   const parameterModeLabels = new Map([
@@ -139,6 +140,8 @@
       topK: "Top-K",
       topKTitle: "-1 means disabled",
       minP: "Min-P",
+      samplingTime: "Sampling Time (s)",
+      samplingTimeTitle: "Sampling window for estimated live speed. Shorter values show more network jitter.",
       parameterDefault: "Default",
       parameterCustom: "Custom",
       framework: "Framework",
@@ -232,6 +235,8 @@
       topK: "Top-K",
       topKTitle: "-1 表示关闭",
       minP: "Min-P",
+      samplingTime: "采样时间 (秒)",
+      samplingTimeTitle: "仅影响实时估算速度。时间越短，网络抖动越明显。",
       parameterDefault: "默认",
       parameterCustom: "自定义",
       framework: "推理框架",
@@ -668,9 +673,9 @@
 
   function updateMetrics(metrics) {
     promptTokenCountEl.textContent = Number.isFinite(metrics.prompt_tokens)
-      ? `${metrics.prompt_provisional ? "~" : ""}${Math.trunc(metrics.prompt_tokens)}`
+      ? `${metrics.prompt_tokens_provisional ? "~" : ""}${Math.trunc(metrics.prompt_tokens)}`
       : "--";
-    promptThroughputEl.textContent = formatRate(metrics.prompt_tok_s, metrics.prompt_provisional);
+    promptThroughputEl.textContent = formatRate(metrics.prompt_tok_s, metrics.prompt_rate_provisional);
     decodeSpeedEl.textContent = formatRate(metrics.decode_tok_s, metrics.decode_provisional);
     peakDecodeSpeedEl.textContent = formatRate(metrics.peak_decode_tok_s, metrics.peak_decode_provisional);
     midDecodeSpeedEl.textContent = formatRate(metrics.mid_decode_tok_s, metrics.mid_decode_provisional);
@@ -681,6 +686,8 @@
       : "--";
     ttftEl.textContent = formatDuration(metrics.ttft_s);
     wallTimeEl.textContent = formatDuration(metrics.wall_s);
+    const previousSampleCount = latestDecodeSamples.length;
+    const wasComplete = latestDecodeComplete;
     latestDecodeSamples = Array.isArray(metrics.decode_samples) ? metrics.decode_samples : [];
     latestDecodeWallSeconds = Number(metrics.wall_s) || 0;
     latestDecodeTTFTSeconds = Number(metrics.ttft_s) || 0;
@@ -703,7 +710,7 @@
     answerTokensEl.textContent = formatPhaseTokens(answer.tokens, answer.provisional);
     answerTimeEl.textContent = formatDuration(answer.seconds);
     answerSpeedEl.textContent = formatPhaseSpeed(answer.tok_s, answer.provisional);
-    drawDecodeChart();
+    if (previousSampleCount !== latestDecodeSamples.length || wasComplete !== latestDecodeComplete) drawDecodeChart();
   }
 
   function drawDecodeChart() {
@@ -722,7 +729,8 @@
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const rawSamples = latestDecodeSamples.filter((sample) => Number.isFinite(sample.rate) && sample.rate > 0);
+    const rawSamples = (latestDecodeComplete ? latestDecodeSamples : latestDecodeSamples.slice(-60))
+      .filter((sample) => Number.isFinite(sample.rate) && sample.rate > 0);
     const liveWindowSize = 60;
     const visibleRawSamples = latestDecodeComplete
       ? rawSamples
@@ -969,17 +977,24 @@
 
   function createClientMetrics({framework, payload}) {
     const startedAt = performance.now();
+    const samplingWindowMs = Math.min(60, Math.max(0.01, Number(samplingTimeEl.value) || 0.2)) * 1000;
+    const provisionalPromptTokens = estimatePromptTokens(payload);
+    const isStrata = framework === "strata" || detectedFramework === "strata";
     let firstContentAt = null;
     let finishedAt = null;
     let promptTokens = null;
     let completionTokens = null;
-    let generatedText = "";
+    let estimatedCompletionTokens = 0;
+    let trailingAsciiWordLength = 0;
     let promptTimingRate = null;
     let liveDecodeRate = null;
     let liveDecodeIsProvisional = true;
     const decodeRateSamples = [];
+    let cachedDecodeRateSummary = null;
+    let cachedDecodeRateSampleCount = -1;
     const serverDecodeBatches = [];
     const liveDecodeWindowMs = 250;
+    let lastEstimatedDecodeObservation = null;
     let lastTimingPredictedTokens = null;
     let lastTimingPredictedMs = null;
     let finalDecodeRate = null;
@@ -1010,6 +1025,36 @@
       if (reportedCompletionTokens !== null) completionTokens = reportedCompletionTokens;
     }
 
+    function recordEstimatedText(piece) {
+      for (let index = 0; index < piece.length; index += 1) {
+        const code = piece.charCodeAt(index);
+        const asciiWord = (code >= 48 && code <= 57)
+          || (code >= 65 && code <= 90)
+          || (code >= 97 && code <= 122);
+        if (asciiWord) {
+          trailingAsciiWordLength += 1;
+          if (trailingAsciiWordLength % 4 === 1) estimatedCompletionTokens += 1;
+        } else {
+          trailingAsciiWordLength = 0;
+          if (!/\s/.test(piece[index])) estimatedCompletionTokens += 1;
+        }
+      }
+    }
+
+    function recordPromptProgress(progress) {
+      if (!progress || typeof progress !== "object") return;
+      const total = readPromptTokenCount(progress.total);
+      const processed = readTokenCount(progress.processed);
+      const cached = readTokenCount(progress.cache);
+      const timeMs = Number(progress.time_ms);
+      if (total !== null) promptTokens = total;
+      if (processed === null || cached === null || !Number.isFinite(timeMs) || timeMs <= 0) return;
+      const measuredTokens = Math.max(0, Math.min(processed, total ?? processed) - cached);
+      if (measuredTokens > 0) {
+        promptTimingRate = measuredTokens * 1000 / timeMs;
+      }
+    }
+
     function recordDecodeTokens(count, exact, at) {
       if (!Number.isFinite(count) || count <= 0) return;
       if (firstDecodeAt === null) firstDecodeAt = at;
@@ -1022,6 +1067,27 @@
       // The first emitted token establishes the decode baseline. It has no
       // preceding interval, so it never becomes a zero-rate Low/P5 sample.
       lastDecodeAt = at;
+    }
+
+    function recordEstimatedDecodeProgress(at) {
+      const tokens = estimatedCompletionTokens;
+      if (tokens <= 0) return;
+      if (firstDecodeAt === null) firstDecodeAt = at;
+      if (lastEstimatedDecodeObservation === null) {
+        lastEstimatedDecodeObservation = {at, tokens};
+      }
+      lastDecodeAt = at;
+      const baseline = lastEstimatedDecodeObservation;
+      const elapsedMs = at - baseline.at;
+      const addedTokens = tokens - baseline.tokens;
+      if (elapsedMs < samplingWindowMs || addedTokens <= 0) return;
+      // A cumulative window avoids turning tightly batched SSE writes into
+      // implausible per-chunk speed spikes.
+      const rate = addedTokens * 1000 / elapsedMs;
+      liveDecodeRate = rate;
+      liveDecodeIsProvisional = true;
+      lastEstimatedDecodeObservation = {at, tokens};
+      recordDecodeRateSample(rate, true, at, "browser", elapsedMs);
     }
 
     function recordDecodeRateSample(
@@ -1066,8 +1132,12 @@
     }
 
     function decodeRateSummary() {
+      if (cachedDecodeRateSampleCount === decodeRateSamples.length && cachedDecodeRateSummary) {
+        return cachedDecodeRateSummary;
+      }
       if (!decodeRateSamples.length) {
-        return {
+        cachedDecodeRateSampleCount = 0;
+        cachedDecodeRateSummary = {
           peak: null,
           mid: null,
           mean: null,
@@ -1077,6 +1147,7 @@
           meanProvisional: true,
           lowProvisional: true,
         };
+        return cachedDecodeRateSummary;
       }
 
       const sortedSamples = [...decodeRateSamples].sort((left, right) => left.rate - right.rate);
@@ -1105,7 +1176,8 @@
       const peak = percentile(0.95);
       const mid = percentile(0.5);
       const low = percentile(0.05);
-      return {
+      cachedDecodeRateSampleCount = decodeRateSamples.length;
+      cachedDecodeRateSummary = {
         peak: peak.value,
         mid: mid.value,
         mean: average(sortedSamples),
@@ -1115,12 +1187,14 @@
         meanProvisional: sortedSamples.some((sample) => sample.provisional),
         lowProvisional: low.provisional,
       };
+      return cachedDecodeRateSummary;
     }
 
     function finalBrowserDecodeRate() {
-      if (!Number.isFinite(completionTokens) || completionTokens <= 1) return null;
+      const totalTokens = completionTokens ?? estimatedCompletionTokens;
+      if (!Number.isFinite(totalTokens) || totalTokens <= 1) return null;
       if (firstDecodeAt === null || lastDecodeAt === null || lastDecodeAt <= firstDecodeAt) return null;
-      return (completionTokens - 1) * 1000 / (lastDecodeAt - firstDecodeAt);
+      return (totalTokens - 1) * 1000 / (lastDecodeAt - firstDecodeAt);
     }
 
     function useFinalDecodeRate() {
@@ -1135,7 +1209,7 @@
       finalDecodeRate = browserRate;
       // Token IDs and SGLang's continuous usage make every measured stream
       // boundary exact. Other endpoints retain the approximation marker.
-      finalDecodeIsProvisional = streamedCompletionTokens < completionTokens;
+      finalDecodeIsProvisional = completionTokens === null || streamedCompletionTokens < completionTokens;
     }
 
     function recordLocalFields(event, choice, at) {
@@ -1175,7 +1249,9 @@
           completionTokens = reportedCompletionTokens;
           cumulativeCompletionTokens = Math.max(cumulativeCompletionTokens || 0, reportedCompletionTokens);
         }
-        if (reportedPromptRate !== null) promptTimingRate = reportedPromptRate;
+        if (reportedPromptRate !== null) {
+          promptTimingRate = reportedPromptRate;
+        }
         if (reportedDecodeRate !== null) {
           latestServerDecodeRate = reportedDecodeRate;
         }
@@ -1188,7 +1264,7 @@
         const hasTimingTotals = reportedCompletionTokens !== null
           && Number.isFinite(predictedMs)
           && predictedMs >= 0;
-        if (hasTimingTotals && !hasServerDecodeTimings) {
+        if (hasTimingTotals && !hasServerDecodeTimings && !isStrata) {
           // Stop mixing SSE arrival jitter with the model's own token timings.
           hasServerDecodeTimings = true;
           decodeRateSamples.length = 0;
@@ -1224,7 +1300,11 @@
         streamedCompletionTokens = cumulativeCompletionTokens;
         exactDelta += missingTokens;
       }
-      if (exactDelta > 0 && !hasServerDecodeTimings) recordDecodeTokens(exactDelta, true, at);
+      // Strata reports predicted_n only on the final chunk. It is the whole
+      // response, not a new batch emitted since the previous SSE event.
+      if (exactDelta > 0 && !hasServerDecodeTimings && !(isStrata && event.usage)) {
+        recordDecodeTokens(exactDelta, true, at);
+      }
       return exactDelta;
     }
 
@@ -1232,8 +1312,7 @@
       const currentTime = now();
       const ttftSeconds = firstContentAt === null ? null : (firstContentAt - startedAt) / 1000;
       const wallSeconds = (currentTime - startedAt) / 1000;
-      const provisionalPromptTokens = estimatePromptTokens(payload);
-      const provisionalCompletionTokens = generatedText ? estimateTextTokens(generatedText) : null;
+      const provisionalCompletionTokens = estimatedCompletionTokens > 0 ? estimatedCompletionTokens : null;
       const visiblePromptTokens = promptTokens === null ? provisionalPromptTokens : promptTokens;
       const visibleCompletionTokens = completionTokens === null
         ? provisionalCompletionTokens
@@ -1283,7 +1362,8 @@
         ttft_s: ttftSeconds,
         decode_duration_s: ttftSeconds === null ? 0 : Math.max(0, wallSeconds - ttftSeconds),
         wall_s: wallSeconds,
-        prompt_provisional: promptTimingRate === null && promptTokens === null,
+        prompt_tokens_provisional: promptTokens === null,
+        prompt_rate_provisional: promptTimingRate === null,
         decode_provisional: decodeIsProvisional,
         live_decode_provisional: liveDecodeIsProvisional,
         peak_decode_provisional: decodeRateStats.peakProvisional,
@@ -1310,6 +1390,7 @@
         const eventTime = performance.now();
         recordUsage(event.usage);
         recordUsage(event.metrics);
+        if (event.prompt_progress) recordPromptProgress(event.prompt_progress);
         const exactTokenDelta = recordLocalFields(event, choice, eventTime);
 
         const reasoningPiece = typeof pieces.reasoning === "string" ? pieces.reasoning : "";
@@ -1335,16 +1416,23 @@
         if (firstContentAt === null && (reasoningPiece || contentPiece || (generatedTokenIds || 0) > 0)) {
           firstContentAt = eventTime;
         }
-        if (reasoningPiece || contentPiece) generatedText += reasoningPiece + contentPiece;
+        if (reasoningPiece || contentPiece) recordEstimatedText(reasoningPiece + contentPiece);
         if (exactTokenDelta === 0 && !hasServerDecodeTimings) {
-          const estimatedTokenDelta = estimateTextTokens(reasoningPiece + contentPiece);
-          if (estimatedTokenDelta > 0) recordDecodeTokens(estimatedTokenDelta, false, eventTime);
+          if (reasoningPiece || contentPiece) recordEstimatedDecodeProgress(eventTime);
         }
-        render();
       },
       finish({completed = false} = {}) {
         if (finishedAt !== null) return;
         finishedAt = performance.now();
+        if (completed && !hasServerDecodeTimings && !decodeRateSamples.length
+          && lastEstimatedDecodeObservation && lastDecodeAt > firstDecodeAt
+          && estimatedCompletionTokens > lastEstimatedDecodeObservation.tokens) {
+          const elapsedMs = lastDecodeAt - firstDecodeAt;
+          recordDecodeRateSample(
+            (estimatedCompletionTokens - lastEstimatedDecodeObservation.tokens) * 1000 / elapsedMs,
+            true, lastDecodeAt, "browser", elapsedMs,
+          );
+        }
         if (completed) useFinalDecodeRate();
         window.clearInterval(refreshTimer);
         render();
@@ -1469,11 +1557,15 @@
     }
   }
 
-  function renderReasoningMessage(reasoningMessage, text) {
+  function renderReasoningMessage(reasoningMessage, piece) {
     const shouldFollowOutput = isNearBottom(reasoningMessage.body);
-    reasoningMessage.rawText = text;
-    reasoningMessage.container.hidden = !text;
-    reasoningMessage.body.textContent = text;
+    reasoningMessage.rawText += piece;
+    reasoningMessage.container.hidden = false;
+    if (!reasoningMessage.liveTextNode) {
+      reasoningMessage.liveTextNode = document.createTextNode("");
+      reasoningMessage.body.appendChild(reasoningMessage.liveTextNode);
+    }
+    reasoningMessage.liveTextNode.appendData(piece);
     if (shouldFollowOutput) reasoningMessage.body.scrollTop = reasoningMessage.body.scrollHeight;
   }
 
@@ -1831,6 +1923,9 @@
     if (framework === "llamacpp") {
       payload.timings_per_token = true;
     }
+    if (framework === "strata" || detectedFramework === "strata") {
+      payload.return_progress = true;
+    }
     return payload;
   }
 
@@ -1868,6 +1963,7 @@
     topPEl.disabled = isRunning || topPDefaultEl.checked;
     topKEl.disabled = isRunning || topKDefaultEl.checked;
     minPEl.disabled = isRunning || minPDefaultEl.checked;
+    samplingTimeEl.disabled = isRunning;
     thinkingBudgetDefaultEl.disabled = isRunning || !reasoningEnabled();
     topPDefaultEl.disabled = isRunning;
     topKDefaultEl.disabled = isRunning;
@@ -2044,7 +2140,16 @@
     const decoder = new TextDecoder();
     let buffer = "";
     let assistantText = "";
-    let reasoningText = "";
+    let liveTextNode = null;
+    let followOutput = isChatNearBottom();
+    let scrollFrame = null;
+    const scheduleScroll = () => {
+      if (scrollFrame !== null) return;
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = null;
+        scrollChatToBottom();
+      });
+    };
 
     const processEventBlock = (block) => {
       const dataLines = block
@@ -2064,7 +2169,6 @@
       }
       if (!payload || typeof payload !== "object") return;
 
-      const shouldFollowOutput = isChatNearBottom();
       const choice = Array.isArray(payload.choices) ? payload.choices[0] : null;
       const delta = choice && typeof choice === "object" ? choice.delta : null;
       // vLLM streams Qwen reasoning as `reasoning`; other compatible servers
@@ -2081,22 +2185,25 @@
       if (!reasoningPiece && !contentPiece) return;
 
       if (reasoningPiece) {
-        reasoningText += reasoningPiece;
-        renderReasoningMessage(assistantMessage.reasoning, reasoningText);
+        renderReasoningMessage(assistantMessage.reasoning, reasoningPiece);
       }
       if (contentPiece) {
         assistantText += contentPiece;
         assistantMessage.rawText = assistantText;
-        renderAssistantMessage(assistantMessage.body, assistantText);
-        updateAssistantPreviewAction(assistantMessage);
+        if (!liveTextNode) {
+          liveTextNode = document.createTextNode("");
+          assistantMessage.body.appendChild(liveTextNode);
+        }
+        liveTextNode.appendData(contentPiece);
       }
-      if (shouldFollowOutput) scrollChatToBottom();
+      if (followOutput) scheduleScroll();
     };
 
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
 
+      followOutput = isChatNearBottom();
       buffer += decoder.decode(value, {stream: true});
       let boundaryIndex = buffer.indexOf("\n\n");
       while (boundaryIndex !== -1) {
@@ -2111,6 +2218,7 @@
     if (buffer.trim()) {
       processEventBlock(buffer.replaceAll("\r", ""));
     }
+    if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
     return assistantText;
   }
 
@@ -2182,6 +2290,12 @@
       const assistantText = await streamAssistantResponse(response, assistantMessage, clientMetrics);
       completed = true;
       assistantMessage.rawText = assistantText;
+      const shouldFollowOutput = isChatNearBottom();
+      if (assistantText) {
+        renderAssistantMessage(assistantMessage.body, assistantText);
+        updateAssistantPreviewAction(assistantMessage);
+      }
+      if (shouldFollowOutput) scrollChatToBottom();
       history.push({role: "user", content: userMessage.requestContent});
       if (assistantText) {
         history.push({role: "assistant", content: assistantText});
@@ -2329,6 +2443,11 @@
 
   maxTokensEl.addEventListener("input", renderRequestSizeHint);
   tempEl.addEventListener("input", renderRequestSizeHint);
+  samplingTimeEl.addEventListener("change", () => {
+    const entered = Number(samplingTimeEl.value);
+    samplingTimeEl.value = String(Math.min(60, Math.max(0.01,
+      Number.isFinite(entered) && entered > 0 ? Math.round(entered * 100) / 100 : 0.2)));
+  });
   reasoningEffortEl.addEventListener("change", () => {
     storage.setItem(reasoningEffortStorageKey, reasoningEffortEl.value);
     renderRequestSizeHint();

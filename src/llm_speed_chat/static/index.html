@@ -99,6 +99,10 @@
                 <span class="fieldLabel" data-i18n="minP">Min-P</span>
                 <span class="parameterInputWrap"><input id="minP" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="0"><span class="defaultToggle"><input id="minPDefault" type="checkbox" checked><span class="parameterModeLabel" id="minPModeLabel" data-i18n="parameterDefault">Default</span></span></span>
               </label>
+              <label class="field" for="samplingTime">
+                <span class="fieldLabel" data-i18n="samplingTime">Sampling Time (s)</span>
+                <input id="samplingTime" type="number" min="0.01" max="60" step="0.01" inputmode="decimal" value="0.2" data-i18n-title="samplingTimeTitle" title="Sampling window for estimated live speed. Shorter values show more network jitter.">
+              </label>
           </div>
         </div>
       </section>

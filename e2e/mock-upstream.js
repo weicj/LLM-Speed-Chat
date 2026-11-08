@@ -85,6 +85,23 @@ const server = http.createServer((req, res) => {
       const userMessages = messages.filter((item) => item.role === "user");
       const lastUserText = extractMessageText(userMessages.at(-1));
 
+      if (lastUserText.includes("strata-burst-metrics")) {
+        streamChunks(res, [
+          {delayMs: 100, data: {choices: [{delta: {}}], prompt_progress: {total: 40, cache: 5, processed: 15, time_ms: 200}}},
+          {delayMs: 100, data: {choices: [{delta: {}}], prompt_progress: {total: 40, cache: 5, processed: 25, time_ms: 200}}},
+          {delayMs: 400, data: {choices: [{delta: {content: "Starting "}}]}},
+          ...Array.from({length: 12}, () => ({delayMs: 5, data: {choices: [{delta: {content: "burst test token "}}]}})),
+          {delayMs: 1250, data: {choices: [{delta: {content: "after a pause "}}]}},
+          {delayMs: 200, data: {choices: [{delta: {content: "and done."}}]}},
+          {delayMs: 0, data: {
+            choices: [{delta: {}, finish_reason: "stop"}],
+            usage: {prompt_tokens: 40, completion_tokens: 60, total_tokens: 100},
+            timings: {prompt_n: 40, prompt_per_second: 80, predicted_n: 60, predicted_ms: 1500, predicted_per_second: 40},
+          }},
+        ]);
+        return;
+      }
+
       if (lastUserText.includes("strata-metrics")) {
         streamChunks(res, [
           {delayMs: 100, data: {choices: [{delta: {reasoning_content: "Considering this."}}]}},
@@ -94,6 +111,16 @@ const server = http.createServer((req, res) => {
             usage: {prompt_tokens: 12, completion_tokens: 5, total_tokens: 17},
             timings: {prompt_n: 12, prompt_per_second: 60, predicted_n: 5, predicted_ms: 100, predicted_per_second: 50},
           }},
+        ]);
+        return;
+      }
+
+      if (lastUserText.includes("large-markdown-stream")) {
+        streamChunks(res, [
+          {delayMs: 0, data: {choices: [{delta: {content: "## Stream heading\n\n"}}]}},
+          ...Array.from({length: 250}, () => ({delayMs: 0, data: {choices: [{delta: {content: "more text "}}]}})),
+          {delayMs: 500, data: {choices: [{delta: {content: "**bold finish**"}}]}},
+          {delayMs: 0, data: {usage: {prompt_tokens: 6, completion_tokens: 500}}},
         ]);
         return;
       }
